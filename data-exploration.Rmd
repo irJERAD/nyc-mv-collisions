@@ -75,7 +75,7 @@ Our Dataset structure revealed the variables and their classes `sapply(names(dt)
 
 ### Understanding Conclusion  
 
-With a goal of _reducing accidents in Brooklyn_ our main goal is to reduce observations of accidents where `BOROUGH == "Brooklyn"`.  
+With a goal of _reducing accidents in Brooklyn_ our main goal is to reduce observations of accidents where `BOROUGH == "BROOKLYN"`.  
 
 #### Proposed Solutions:  
 
@@ -85,8 +85,8 @@ With a goal of _reducing accidents in Brooklyn_ our main goal is to reduce obser
         + Day of week
         + Day of month
         + Day or Month of year
-- Explore trends  
-    + Across time
+- Explore trends `group_by`  
+    + Across time  
     + Across space
         + Burrough
         + Zip
@@ -95,7 +95,12 @@ With a goal of _reducing accidents in Brooklyn_ our main goal is to reduce obser
 
 
 **1. Subset:**
-If we look at the subset of the dataset where BOROUGH is "Brooklyn" `dt[BOROUGH == "Brooklyn",]` we want to find patterns in the existing observations and propose methods to eliminate these patterns.  
+If we look at the subset of the dataset where BOROUGH is "BROOKLYN" `brooklyn <- filter(dt, BOROUGH == "BROOKLYN")` we want to find patterns in the existing observations and propose methods to eliminate these patterns.     
+
+- There are `length(levels(dt$BOROUGH))`: `r length(levels(dt$BOROUGH))` levels in the factor variable `BOROUGH`  
+- Including `levels(dt$BOROUGH)`: `r levels(dt$BOROUGH)`.  
+- So we really have 5 defined Boroughs, Brooklyn being one of which, with the 6th being an `NA` or blank value.  
+- Subsetting to Brooklyn gives us 223552 observations, reducing set of observations by over 75%  
 
 - Explore facets of variables  
     + Datetime  
@@ -108,4 +113,15 @@ If we look at the subset of the dataset where BOROUGH is "Brooklyn" `dt[BOROUGH 
 
 **2. Other Success (_over time_):**
 Look for reductions in other burroughs over time and propose similar efforts.
+
+
+
+## Exploration
+
+### Subset to Brooklyn
+
+Create subset of Brooklyn observations:
+```{r filter-brooklyn}
+brooklyn <- filter(dt, BOROUGH == "BROOKLYN")
+```
 
