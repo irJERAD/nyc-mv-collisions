@@ -176,6 +176,47 @@ $(document).ready(function () {
 <h1>About</h1>
 <p>This notebook explores the more recent data from NYC Open Data <a href="https://data.cityofnewyork.us/Public-Safety/NYPD-Motor-Vehicle-Collisions/h9gi-nx95">Data Set</a>.</p>
 <p>This dataset can also be reached and interacted with through its <a href="https://bigquery.cloud.google.com/table/bigquery-public-data:new_york.nypd_mv_collisions?tab=schema">Google BigQuery location</a></p>
+<div id="exercise-overview" class="section level2">
+<h2>Exercise Overview</h2>
+<p>For this exercise, we’d like you to analyze data on New York motor vehicle collisions and answer the following question:<br />
+<strong>What are your ideas for reducing accidents in Brooklyn?</strong><br />
+Imagine you are preparing this presentation for the city council who will use it to inform new legislation and/or projects.</p>
+<div id="todo" class="section level3">
+<h3>TODO</h3>
+<p>Briefly:</p>
+<ol style="list-style-type: decimal">
+<li>Inspect dataset<br />
+</li>
+<li>Identify dependent / outcome variables<br />
+</li>
+<li>iterate over:
+<ol style="list-style-type: lower-alpha">
+<li>hypothesize predictor variables<br />
+</li>
+<li>test<br />
+</li>
+<li>document &amp; consider results</li>
+</ol></li>
+</ol>
+<ul>
+<li>Setup
+<ul>
+<li>[ ] Libraries (<em>continual</em>)<br />
+</li>
+<li>[x] data<br />
+</li>
+</ul></li>
+<li>Understand
+<ul>
+<li>[x] structure<br />
+</li>
+<li>[x] summary<br />
+</li>
+<li>[ ] identify dependent variables</li>
+</ul></li>
+</ul>
+</div>
+</div>
 <div id="setup" class="section level2">
 <h2>Setup</h2>
 <div id="load-libraries" class="section level3">
@@ -183,22 +224,10 @@ $(document).ready(function () {
 <p>Libraries that will be used during exploration</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShkcGx5cilcblxuYGBgIn0= -->
-<pre class="r"><code>library(dplyr)
-</code></pre>
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShtYWdyaXR0cilcbmxpYnJhcnkoZHBseXIpXG5gYGAifQ== -->
+<pre class="r"><code>library(magrittr)
+library(dplyr)</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiXG5BdHRhY2hpbmcgcGFja2FnZTog4oCYZHBseXLigJlcblxuVGhlIGZvbGxvd2luZyBvYmplY3RzIGFyZSBtYXNrZWQgZnJvbSDigJhwYWNrYWdlOnN0YXRz4oCZOlxuXG4gICAgZmlsdGVyLCBsYWdcblxuVGhlIGZvbGxvd2luZyBvYmplY3RzIGFyZSBtYXNrZWQgZnJvbSDigJhwYWNrYWdlOmJhc2XigJk6XG5cbiAgICBpbnRlcnNlY3QsIHNldGRpZmYsIHNldGVxdWFsLCB1bmlvblxuIn0= -->
-<pre><code>
-Attaching package: ‘dplyr’
-
-The following objects are masked from ‘package:stats’:
-
-    filter, lag
-
-The following objects are masked from ‘package:base’:
-
-    intersect, setdiff, setequal, union</code></pre>
-<!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 </div>
@@ -207,14 +236,250 @@ The following objects are masked from ‘package:base’:
 <p>Load data from /data directory and into memory</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZHQgPC0gcmVhZC5jc3YoZmlsZSA9IFwiZGF0YS9OWVBEX01vdG9yX1ZlaGljbGVfQ29sbGlzaW9ucy5jc3ZcIilcbmBgYCJ9 -->
+<pre class="r"><code>dt &lt;- read.csv(file = &quot;data/NYPD_Motor_Vehicle_Collisions.csv&quot;)</code></pre>
+<!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
+</div>
+</div>
+<div id="undertand-dataset" class="section level2">
+<h2>Undertand Dataset</h2>
+<div id="dataset-structure" class="section level3">
+<h3>Dataset Structure</h3>
+<p>Inspect structure of dataset with the <code>str()</code> command:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuc3RyKGR0KVxuYGBgIn0= -->
+<pre class="r"><code>str(dt)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiJ2RhdGEuZnJhbWUnOlx0OTkwODAwIG9icy4gb2YgIDI5IHZhcmlhYmxlczpcbiAkIERBVEUgICAgICAgICAgICAgICAgICAgICAgICAgOiBGYWN0b3Igdy8gMTcwOSBsZXZlbHMgXCIwMS8wMS8yMDEzXCIsXCIwMS8wMS8yMDE0XCIsLi46IDIwMCAyMDAgMjAwIDIwMCAxMDY4IDkyMCA2MTEgMjAwIDY1IDY1IC4uLlxuICQgVElNRSAgICAgICAgICAgICAgICAgICAgICAgICA6IEZhY3RvciB3LyAxNDQwIGxldmVscyBcIjA6MDBcIixcIjA6MDFcIiwuLjogNTU2IDYzMSA2MzIgNjQ0IDY2MSA5MzYgNDYgNjg2IDEwNTEgMTA2NiAuLi5cbiAkIEJPUk9VR0ggICAgICAgICAgICAgICAgICAgICAgOiBGYWN0b3Igdy8gNiBsZXZlbHMgXCJcIixcIkJST05YXCIsXCJCUk9PS0xZTlwiLC4uOiAxIDIgMiAzIDEgMSAxIDEgMyAzIC4uLlxuICQgWklQLkNPREUgICAgICAgICAgICAgICAgICAgICA6IGludCAgTkEgMTA0NTQgMTA0NjYgMTEyMTggTkEgTkEgTkEgTkEgMTEyMTggMTEyMzYgLi4uXG4gJCBMQVRJVFVERSAgICAgICAgICAgICAgICAgICAgIDogbnVtICA0MC43IDQwLjggNDAuOSA0MC42IDQwLjcgLi4uXG4gJCBMT05HSVRVREUgICAgICAgICAgICAgICAgICAgIDogbnVtICAtNzMuOSAtNzMuOSAtNzMuOSAtNzQgLTczLjkgLi4uXG4gJCBMT0NBVElPTiAgICAgICAgICAgICAgICAgICAgIDogRmFjdG9yIHcvIDkwMjcyIGxldmVscyBcIlwiLFwiKDAuMCwgMC4wKVwiLC4uOiAyODU0NSA3MzE2NSA4OTMyOCAxNzgwOCA1MjYwMCAxIDEgMTQ4MjQgMTc3NjMgMTgzNzkgLi4uXG4gJCBPTi5TVFJFRVQuTkFNRSAgICAgICAgICAgICAgIDogRmFjdG9yIHcvIDkxNTEgbGV2ZWxzIFwiXCIsXCI/RVNUIDEyNSBTVFJFRVRcIiwuLjogMTQyMCAxIDM0OTMgMSAxIDEgNjU5OCA0MDY5IDczOCA3MDcxIC4uLlxuICQgQ1JPU1MuU1RSRUVULk5BTUUgICAgICAgICAgICA6IEZhY3RvciB3LyA5NTg1IGxldmVscyBcIlwiLFwiMFwiLFwiMDEyNDdcIiwuLjogMSAxIDkzNjQgMSAxIDEgNzM5OSAzNjM4IDExNCA0MjAxIC4uLlxuICQgT0ZGLlNUUkVFVC5OQU1FICAgICAgICAgICAgICA6IEZhY3RvciB3LyA1OTkwOCBsZXZlbHMgXCJcIixcIigyNiBCUk9PS0xZTiBURVJNSU5BTCBNQVJLRVQgTE9UKVwiLC4uOiAxIDM4MjI1IDEgMjk4OTggMSAxIDEgMSAxIDEgLi4uXG4gJCBOVU1CRVIuT0YuUEVSU09OUy5JTkpVUkVEICAgIDogaW50ICAwIDAgMSAwIDAgMCAwIDAgMSAyIC4uLlxuICQgTlVNQkVSLk9GLlBFUlNPTlMuS0lMTEVEICAgICA6IGludCAgMCAwIDAgMCAwIDAgMCAwIDAgMCAuLi5cbiAkIE5VTUJFUi5PRi5QRURFU1RSSUFOUy5JTkpVUkVEOiBpbnQgIDAgMCAxIDAgMCAwIDAgMCAwIDAgLi4uXG4gJCBOVU1CRVIuT0YuUEVERVNUUklBTlMuS0lMTEVEIDogaW50ICAwIDAgMCAwIDAgMCAwIDAgMCAwIC4uLlxuICQgTlVNQkVSLk9GLkNZQ0xJU1QuSU5KVVJFRCAgICA6IGludCAgMCAwIDAgMCAwIDAgMCAwIDAgMCAuLi5cbiAkIE5VTUJFUi5PRi5DWUNMSVNULktJTExFRCAgICAgOiBpbnQgIDAgMCAwIDAgMCAwIDAgMCAwIDAgLi4uXG4gJCBOVU1CRVIuT0YuTU9UT1JJU1QuSU5KVVJFRCAgIDogaW50ICAwIDAgMCAwIDAgMCAwIDAgMSAyIC4uLlxuICQgTlVNQkVSLk9GLk1PVE9SSVNULktJTExFRCAgICA6IGludCAgMCAwIDAgMCAwIDAgMCAwIDAgMCAuLi5cbiAkIENPTlRSSUJVVElORy5GQUNUT1IuVkVISUNMRS4xOiBGYWN0b3Igdy8gNDkgbGV2ZWxzIFwiXCIsXCJBY2NlbGVyYXRvciBEZWZlY3RpdmVcIiwuLjogMTAgNDcgNDcgNDcgNDcgMTEgMSA0MyA0MyA0MyAuLi5cbiAkIENPTlRSSUJVVElORy5GQUNUT1IuVkVISUNMRS4yOiBGYWN0b3Igdy8gNDkgbGV2ZWxzIFwiXCIsXCJBY2NlbGVyYXRvciBEZWZlY3RpdmVcIiwuLjogNDcgMSAxIDQ3IDQ3IDQ3IDEgNDcgNDcgNDcgLi4uXG4gJCBDT05UUklCVVRJTkcuRkFDVE9SLlZFSElDTEUuMzogRmFjdG9yIHcvIDQzIGxldmVscyBcIlwiLFwiQWNjZWxlcmF0b3IgRGVmZWN0aXZlXCIsLi46IDEgMSAxIDEgMSAxIDEgMSA0MiAxIC4uLlxuICQgQ09OVFJJQlVUSU5HLkZBQ1RPUi5WRUhJQ0xFLjQ6IEZhY3RvciB3LyA0MiBsZXZlbHMgXCJcIixcIkFjY2VsZXJhdG9yIERlZmVjdGl2ZVwiLC4uOiAxIDEgMSAxIDEgMSAxIDEgMSAxIC4uLlxuICQgQ09OVFJJQlVUSU5HLkZBQ1RPUi5WRUhJQ0xFLjU6IEZhY3RvciB3LyAzMSBsZXZlbHMgXCJcIixcIkFnZ3Jlc3NpdmUgRHJpdmluZy9Sb2FkIFJhZ2VcIiwuLjogMSAxIDEgMSAxIDEgMSAxIDEgMSAuLi5cbiAkIFVOSVFVRS5LRVkgICAgICAgICAgICAgICAgICAgOiBpbnQgIDM2MTI3MjEgMzYxMjc5MSAzNjE4NzQzIDM2MTQ0NzEgMzI4NDkyMiAyODMzNzE0IDMzNjY3OSAzNjE4OTI1IDM1OTgwOTUgMzU5NzM2MCAuLi5cbiAkIFZFSElDTEUuVFlQRS5DT0RFLjEgICAgICAgICAgOiBGYWN0b3Igdy8gMTggbGV2ZWxzIFwiXCIsXCJBTUJVTEFOQ0VcIiwuLjogMTUgMTAgMTIgMTUgMTAgMTAgMSAxMCAxMCAxNSAuLi5cbiAkIFZFSElDTEUuVFlQRS5DT0RFLjIgICAgICAgICAgOiBGYWN0b3Igdy8gMTggbGV2ZWxzIFwiXCIsXCJBTUJVTEFOQ0VcIiwuLjogMTAgMSAxIDEwIDE2IDEwIDEgMTAgMTAgMTUgLi4uXG4gJCBWRUhJQ0xFLlRZUEUuQ09ERS4zICAgICAgICAgIDogRmFjdG9yIHcvIDE4IGxldmVscyBcIlwiLFwiQU1CVUxBTkNFXCIsLi46IDEgMSAxIDEgMSAxIDEgMSAxNSAxIC4uLlxuICQgVkVISUNMRS5UWVBFLkNPREUuNCAgICAgICAgICA6IEZhY3RvciB3LyAxOCBsZXZlbHMgXCJcIixcIkFNQlVMQU5DRVwiLC4uOiAxIDEgMSAxIDEgMSAxIDEgMSAxIC4uLlxuICQgVkVISUNMRS5UWVBFLkNPREUuNSAgICAgICAgICA6IEZhY3RvciB3LyAxNiBsZXZlbHMgXCJcIixcIkFNQlVMQU5DRVwiLC4uOiAxIDEgMSAxIDEgMSAxIDEgMSAxIC4uLlxuIn0= -->
+<pre><code>'data.frame':   990800 obs. of  29 variables:
+ $ DATE                         : Factor w/ 1709 levels &quot;01/01/2013&quot;,&quot;01/01/2014&quot;,..: 200 200 200 200 1068 920 611 200 65 65 ...
+ $ TIME                         : Factor w/ 1440 levels &quot;0:00&quot;,&quot;0:01&quot;,..: 556 631 632 644 661 936 46 686 1051 1066 ...
+ $ BOROUGH                      : Factor w/ 6 levels &quot;&quot;,&quot;BRONX&quot;,&quot;BROOKLYN&quot;,..: 1 2 2 3 1 1 1 1 3 3 ...
+ $ ZIP.CODE                     : int  NA 10454 10466 11218 NA NA NA NA 11218 11236 ...
+ $ LATITUDE                     : num  40.7 40.8 40.9 40.6 40.7 ...
+ $ LONGITUDE                    : num  -73.9 -73.9 -73.9 -74 -73.9 ...
+ $ LOCATION                     : Factor w/ 90272 levels &quot;&quot;,&quot;(0.0, 0.0)&quot;,..: 28545 73165 89328 17808 52600 1 1 14824 17763 18379 ...
+ $ ON.STREET.NAME               : Factor w/ 9151 levels &quot;&quot;,&quot;?EST 125 STREET&quot;,..: 1420 1 3493 1 1 1 6598 4069 738 7071 ...
+ $ CROSS.STREET.NAME            : Factor w/ 9585 levels &quot;&quot;,&quot;0&quot;,&quot;01247&quot;,..: 1 1 9364 1 1 1 7399 3638 114 4201 ...
+ $ OFF.STREET.NAME              : Factor w/ 59908 levels &quot;&quot;,&quot;(26 BROOKLYN TERMINAL MARKET LOT)&quot;,..: 1 38225 1 29898 1 1 1 1 1 1 ...
+ $ NUMBER.OF.PERSONS.INJURED    : int  0 0 1 0 0 0 0 0 1 2 ...
+ $ NUMBER.OF.PERSONS.KILLED     : int  0 0 0 0 0 0 0 0 0 0 ...
+ $ NUMBER.OF.PEDESTRIANS.INJURED: int  0 0 1 0 0 0 0 0 0 0 ...
+ $ NUMBER.OF.PEDESTRIANS.KILLED : int  0 0 0 0 0 0 0 0 0 0 ...
+ $ NUMBER.OF.CYCLIST.INJURED    : int  0 0 0 0 0 0 0 0 0 0 ...
+ $ NUMBER.OF.CYCLIST.KILLED     : int  0 0 0 0 0 0 0 0 0 0 ...
+ $ NUMBER.OF.MOTORIST.INJURED   : int  0 0 0 0 0 0 0 0 1 2 ...
+ $ NUMBER.OF.MOTORIST.KILLED    : int  0 0 0 0 0 0 0 0 0 0 ...
+ $ CONTRIBUTING.FACTOR.VEHICLE.1: Factor w/ 49 levels &quot;&quot;,&quot;Accelerator Defective&quot;,..: 10 47 47 47 47 11 1 43 43 43 ...
+ $ CONTRIBUTING.FACTOR.VEHICLE.2: Factor w/ 49 levels &quot;&quot;,&quot;Accelerator Defective&quot;,..: 47 1 1 47 47 47 1 47 47 47 ...
+ $ CONTRIBUTING.FACTOR.VEHICLE.3: Factor w/ 43 levels &quot;&quot;,&quot;Accelerator Defective&quot;,..: 1 1 1 1 1 1 1 1 42 1 ...
+ $ CONTRIBUTING.FACTOR.VEHICLE.4: Factor w/ 42 levels &quot;&quot;,&quot;Accelerator Defective&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...
+ $ CONTRIBUTING.FACTOR.VEHICLE.5: Factor w/ 31 levels &quot;&quot;,&quot;Aggressive Driving/Road Rage&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...
+ $ UNIQUE.KEY                   : int  3612721 3612791 3618743 3614471 3284922 2833714 336679 3618925 3598095 3597360 ...
+ $ VEHICLE.TYPE.CODE.1          : Factor w/ 18 levels &quot;&quot;,&quot;AMBULANCE&quot;,..: 15 10 12 15 10 10 1 10 10 15 ...
+ $ VEHICLE.TYPE.CODE.2          : Factor w/ 18 levels &quot;&quot;,&quot;AMBULANCE&quot;,..: 10 1 1 10 16 10 1 10 10 15 ...
+ $ VEHICLE.TYPE.CODE.3          : Factor w/ 18 levels &quot;&quot;,&quot;AMBULANCE&quot;,..: 1 1 1 1 1 1 1 1 15 1 ...
+ $ VEHICLE.TYPE.CODE.4          : Factor w/ 18 levels &quot;&quot;,&quot;AMBULANCE&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...
+ $ VEHICLE.TYPE.CODE.5          : Factor w/ 16 levels &quot;&quot;,&quot;AMBULANCE&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+</div>
+<div id="dataset-summary" class="section level3">
+<h3>Dataset Summary</h3>
+<p>Inspect summary of dataset with <code>summary()</code> command:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuc3VtbWFyeShkdClcbmBgYCJ9 -->
+<pre class="r"><code>summary(dt)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiICAgICAgICAgREFURSAgICAgICAgICAgICBUSU1FICAgICAgICAgICAgICAgICBCT1JPVUdIICAgICAgICAgIFpJUC5DT0RFICAgICBcbiAwMS8yMS8yMDE0OiAgMTE2MSAgIDE2OjAwICA6IDEyNzkyICAgICAgICAgICAgICAgIDoyNjA3MjUgICBNaW4uICAgOjEwMDAwICAgXG4gMDEvMTgvMjAxNTogICA5NjAgICAxNTowMCAgOiAxMjc0OCAgIEJST05YICAgICAgICA6IDk1Mzk2ICAgMXN0IFF1LjoxMDA3NSAgIFxuIDAyLzAzLzIwMTQ6ICAgOTYwICAgMTc6MDAgIDogMTI1OTcgICBCUk9PS0xZTiAgICAgOjIyMzU1MiAgIE1lZGlhbiA6MTEyMDUgICBcbiAwMy8wNi8yMDE1OiAgIDkzNiAgIDE4OjAwICA6IDExNjQxICAgTUFOSEFUVEFOICAgIDoxODc1NzEgICBNZWFuICAgOjEwODA4ICAgXG4gMDEvMDcvMjAxNzogICA4ODcgICAxNDowMCAgOiAxMTA5NCAgIFFVRUVOUyAgICAgICA6MTg5NjE5ICAgM3JkIFF1LjoxMTIzNiAgIFxuIDA5LzMwLzIwMTY6ICAgODcyICAgMTM6MDAgIDogMTAzNjUgICBTVEFURU4gSVNMQU5EOiAzMzkzNyAgIE1heC4gICA6MTE2OTcgICBcbiAoT3RoZXIpICAgOjk4NTAyNCAgIChPdGhlcik6OTE5NTYzICAgICAgICAgICAgICAgICAgICAgICAgICBOQSdzICAgOjI2MDgyNiAgXG4gICAgTEFUSVRVREUgICAgICAgIExPTkdJVFVERSAgICAgICAgICAgICAgICAgICAgICAgICAgICBMT0NBVElPTiAgICAgXG4gTWluLiAgIDogMC4wMCAgICBNaW4uICAgOi0yMDEuMzYgICAgICAgICAgICAgICAgICAgICAgICAgICAgOjIwMTQ0MyAgXG4gMXN0IFF1Ljo0MC42NyAgICAxc3QgUXUuOiAtNzMuOTggICAoNDAuNjk2MDM0NiwgLTczLjk4NDUyOTIpOiAgIDY3MyAgXG4gTWVkaWFuIDo0MC43MiAgICBNZWRpYW4gOiAtNzMuOTMgICAoNDAuNzYwNjAwNSwgLTczLjk2NDMxNDIpOiAgIDU0NCAgXG4gTWVhbiAgIDo0MC43MiAgICBNZWFuICAgOiAtNzMuOTIgICAoNDAuNzU3MjMyMywgLTczLjk4OTc5MjIpOiAgIDQ4NSAgXG4gM3JkIFF1Ljo0MC43NyAgICAzcmQgUXUuOiAtNzMuODcgICAoNDAuNjc1NzM1NywgLTczLjg5Njg1MzMpOiAgIDQ4MCAgXG4gTWF4LiAgIDo0MC45MSAgICBNYXguICAgOiAgIDAuMDAgICAoNDAuNjU4NTc3OCwgLTczLjg5MDYyMjkpOiAgIDQ2NCAgXG4gTkEncyAgIDoyMDE0NDMgICBOQSdzICAgOjIwMTQ0MyAgICAoT3RoZXIpICAgICAgICAgICAgICAgICAgOjc4NjcxMSAgXG4gICAgICAgICAgICBPTi5TVFJFRVQuTkFNRSAgIENST1NTLlNUUkVFVC5OQU1FXG4gICAgICAgICAgICAgICAgICAgOjE4ODI0NiAgICAgICAgICAgOjIxNzY0OCAgXG4gQlJPQURXQVkgICAgICAgICAgOiAxMDgzMiAgIDMgQVZFTlVFOiAxMTQwNyAgXG4gQVRMQU5USUMgQVZFTlVFICAgOiAgOTM1NCAgIEJST0FEV0FZOiAxMTA4OCAgXG4gTk9SVEhFUk4gQk9VTEVWQVJEOiAgNzQ5MCAgIDIgQVZFTlVFOiAgOTY3OCAgXG4gMyBBVkVOVUUgICAgICAgICAgOiAgNjg2NCAgIDUgQVZFTlVFOiAgNzg0NiAgXG4gRkxBVEJVU0ggQVZFTlVFICAgOiAgNjUwMCAgIDcgQVZFTlVFOiAgNzMxMiAgXG4gKE90aGVyKSAgICAgICAgICAgOjc2MTUxNCAgIChPdGhlcikgOjcyNTgyMSAgXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBPRkYuU1RSRUVULk5BTUUgICBOVU1CRVIuT0YuUEVSU09OUy5JTkpVUkVEXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDo5MTY3NjQgICBNaW4uICAgOiAwLjAwMDAgICAgICAgICAgXG4gUEFSS0lORyBMT1QgMTEwLTAwIFJPQ0tBV0FZIEJPVUxFVkFSRCAgIDogICAxNTAgICAxc3QgUXUuOiAwLjAwMDAgICAgICAgICAgXG4gUEFSS0lORyBMT1QtNzcyIEVER0VXQVRFUiBSRCAgICAgICAgICAgIDogICAgOTEgICBNZWRpYW4gOiAwLjAwMDAgICAgICAgICAgXG4gUEFSS0lORyBMT1QgT0YgMTEwLTAwIFJPQ0tBV0FZIEJPVUxFVkFSRDogICAgOTAgICBNZWFuICAgOiAwLjI1NTIgICAgICAgICAgXG4gMyBBVkVOVUUgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDogICAgNzIgICAzcmQgUXUuOiAwLjAwMDAgICAgICAgICAgXG4gMiBBVkVOVUUgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDogICAgNjcgICBNYXguICAgOjQzLjAwMDAgICAgICAgICAgXG4gKE90aGVyKSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDogNzM1NjYgICAgICAgICAgICAgICAgICAgICAgICAgICAgXG4gTlVNQkVSLk9GLlBFUlNPTlMuS0lMTEVEIE5VTUJFUi5PRi5QRURFU1RSSUFOUy5JTkpVUkVEXG4gTWluLiAgIDowLjAwMDAwMCAgICAgICAgIE1pbi4gICA6IDAuMDAwMDAgICAgICAgICAgICAgXG4gMXN0IFF1LjowLjAwMDAwMCAgICAgICAgIDFzdCBRdS46IDAuMDAwMDAgICAgICAgICAgICAgXG4gTWVkaWFuIDowLjAwMDAwMCAgICAgICAgIE1lZGlhbiA6IDAuMDAwMDAgICAgICAgICAgICAgXG4gTWVhbiAgIDowLjAwMTIxNCAgICAgICAgIE1lYW4gICA6IDAuMDU0NTUgICAgICAgICAgICAgXG4gM3JkIFF1LjowLjAwMDAwMCAgICAgICAgIDNyZCBRdS46IDAuMDAwMDAgICAgICAgICAgICAgXG4gTWF4LiAgIDo1LjAwMDAwMCAgICAgICAgIE1heC4gICA6MTUuMDAwMDAgICAgICAgICAgICAgXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXG4gTlVNQkVSLk9GLlBFREVTVFJJQU5TLktJTExFRCBOVU1CRVIuT0YuQ1lDTElTVC5JTkpVUkVEXG4gTWluLiAgIDowLjAwMDAwMDAgICAgICAgICAgICBNaW4uICAgOjAuMDAwMDAgICAgICAgICAgXG4gMXN0IFF1LjowLjAwMDAwMDAgICAgICAgICAgICAxc3QgUXUuOjAuMDAwMDAgICAgICAgICAgXG4gTWVkaWFuIDowLjAwMDAwMDAgICAgICAgICAgICBNZWRpYW4gOjAuMDAwMDAgICAgICAgICAgXG4gTWVhbiAgIDowLjAwMDY4MzMgICAgICAgICAgICBNZWFuICAgOjAuMDIwOTMgICAgICAgICAgXG4gM3JkIFF1LjowLjAwMDAwMDAgICAgICAgICAgICAzcmQgUXUuOjAuMDAwMDAgICAgICAgICAgXG4gTWF4LiAgIDoyLjAwMDAwMDAgICAgICAgICAgICBNYXguICAgOjYuMDAwMDAgICAgICAgICAgXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXG4gTlVNQkVSLk9GLkNZQ0xJU1QuS0lMTEVEIE5VTUJFUi5PRi5NT1RPUklTVC5JTkpVUkVEIE5VTUJFUi5PRi5NT1RPUklTVC5LSUxMRURcbiBNaW4uICAgOjAuMDBlKzAwICAgICAgICAgTWluLiAgIDogMC4wMDAwICAgICAgICAgICAgTWluLiAgIDowLjAwMDAwMCAgICAgICAgIFxuIDFzdCBRdS46MC4wMGUrMDAgICAgICAgICAxc3QgUXUuOiAwLjAwMDAgICAgICAgICAgICAxc3QgUXUuOjAuMDAwMDAwICAgICAgICAgXG4gTWVkaWFuIDowLjAwZSswMCAgICAgICAgIE1lZGlhbiA6IDAuMDAwMCAgICAgICAgICAgIE1lZGlhbiA6MC4wMDAwMDAgICAgICAgICBcbiBNZWFuICAgOjcuNDdlLTA1ICAgICAgICAgTWVhbiAgIDogMC4xOTI3ICAgICAgICAgICAgTWVhbiAgIDowLjAwMDQ2MyAgICAgICAgIFxuIDNyZCBRdS46MC4wMGUrMDAgICAgICAgICAzcmQgUXUuOiAwLjAwMDAgICAgICAgICAgICAzcmQgUXUuOjAuMDAwMDAwICAgICAgICAgXG4gTWF4LiAgIDoxLjAwZSswMCAgICAgICAgIE1heC4gICA6NDMuMDAwMCAgICAgICAgICAgIE1heC4gICA6NS4wMDAwMDAgICAgICAgICBcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIFxuICAgICAgICAgICAgICAgIENPTlRSSUJVVElORy5GQUNUT1IuVkVISUNMRS4xXG4gVW5zcGVjaWZpZWQgICAgICAgICAgICAgICAgICAgOjUyMzczNiAgICAgICBcbiBEcml2ZXIgSW5hdHRlbnRpb24vRGlzdHJhY3Rpb246MTI3Njg4ICAgICAgIFxuIEZhdGlndWVkL0Ryb3dzeSAgICAgICAgICAgICAgIDogNDgyNDkgICAgICAgXG4gRmFpbHVyZSB0byBZaWVsZCBSaWdodC1vZi1XYXkgOiA0Mjk0OCAgICAgICBcbiBPdGhlciBWZWhpY3VsYXIgICAgICAgICAgICAgICA6IDMwMzkzICAgICAgIFxuIEJhY2tpbmcgVW5zYWZlbHkgICAgICAgICAgICAgIDogMjc4ODYgICAgICAgXG4gKE90aGVyKSAgICAgICAgICAgICAgICAgICAgICAgOjE4OTkwMCAgICAgICBcbiAgICAgICAgICAgICAgICBDT05UUklCVVRJTkcuRkFDVE9SLlZFSElDTEUuMlxuIFVuc3BlY2lmaWVkICAgICAgICAgICAgICAgICAgIDo3Mzg5ODUgICAgICAgXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgOjEyMzcyNCAgICAgICBcbiBEcml2ZXIgSW5hdHRlbnRpb24vRGlzdHJhY3Rpb246IDM3ODQzICAgICAgIFxuIE90aGVyIFZlaGljdWxhciAgICAgICAgICAgICAgIDogMTc3MTEgICAgICAgXG4gRmF0aWd1ZWQvRHJvd3N5ICAgICAgICAgICAgICAgOiAxMzAxNiAgICAgICBcbiBGYWlsdXJlIHRvIFlpZWxkIFJpZ2h0LW9mLVdheSA6ICA5MDg3ICAgICAgIFxuIChPdGhlcikgICAgICAgICAgICAgICAgICAgICAgIDogNTA0MzQgICAgICAgXG4gICAgICAgICAgICAgICAgQ09OVFJJQlVUSU5HLkZBQ1RPUi5WRUhJQ0xFLjNcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA6OTI1Njk2ICAgICAgIFxuIFVuc3BlY2lmaWVkICAgICAgICAgICAgICAgICAgIDogNTk1MzcgICAgICAgXG4gT3RoZXIgVmVoaWN1bGFyICAgICAgICAgICAgICAgOiAgMTIyNSAgICAgICBcbiBGYXRpZ3VlZC9Ecm93c3kgICAgICAgICAgICAgICA6ICAxMTIyICAgICAgIFxuIERyaXZlciBJbmF0dGVudGlvbi9EaXN0cmFjdGlvbjogIDExMDAgICAgICAgXG4gUGF2ZW1lbnQgU2xpcHBlcnkgICAgICAgICAgICAgOiAgIDIzNCAgICAgICBcbiAoT3RoZXIpICAgICAgICAgICAgICAgICAgICAgICA6ICAxODg2ICAgICAgIFxuICAgICAgICAgICAgICAgIENPTlRSSUJVVElORy5GQUNUT1IuVkVISUNMRS40XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgOjk3NjcxNyAgICAgICBcbiBVbnNwZWNpZmllZCAgICAgICAgICAgICAgICAgICA6IDEyOTM4ICAgICAgIFxuIEZhdGlndWVkL0Ryb3dzeSAgICAgICAgICAgICAgIDogICAyMjIgICAgICAgXG4gT3RoZXIgVmVoaWN1bGFyICAgICAgICAgICAgICAgOiAgIDIyMSAgICAgICBcbiBEcml2ZXIgSW5hdHRlbnRpb24vRGlzdHJhY3Rpb246ICAgMTkyICAgICAgIFxuIFBhdmVtZW50IFNsaXBwZXJ5ICAgICAgICAgICAgIDogICAgNjcgICAgICAgXG4gKE90aGVyKSAgICAgICAgICAgICAgICAgICAgICAgOiAgIDQ0MyAgICAgICBcbiAgICAgICAgICAgICAgICBDT05UUklCVVRJTkcuRkFDVE9SLlZFSElDTEUuNSAgIFVOSVFVRS5LRVkgICAgIFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDo5ODczNjAgICAgICAgIE1pbi4gICA6ICAgICAyMiAgXG4gVW5zcGVjaWZpZWQgICAgICAgICAgICAgICAgICAgOiAgMzE4NiAgICAgICAgMXN0IFF1LjogMjQ5NTA5ICBcbiBPdGhlciBWZWhpY3VsYXIgICAgICAgICAgICAgICA6ICAgIDUyICAgICAgICBNZWRpYW4gOjMxMzE1MjAgIFxuIEZhdGlndWVkL0Ryb3dzeSAgICAgICAgICAgICAgIDogICAgNDggICAgICAgIE1lYW4gICA6MjA1NDA3MCAgXG4gRHJpdmVyIEluYXR0ZW50aW9uL0Rpc3RyYWN0aW9uOiAgICAzNiAgICAgICAgM3JkIFF1LjozMzc5MjIwICBcbiBQYXZlbWVudCBTbGlwcGVyeSAgICAgICAgICAgICA6ICAgIDIzICAgICAgICBNYXguICAgOjM2Mjc5NjkgIFxuIChPdGhlcikgICAgICAgICAgICAgICAgICAgICAgIDogICAgOTUgICAgICAgICAgICAgICAgICAgICAgICAgXG4gICAgICAgICAgICAgICAgICAgIFZFSElDTEUuVFlQRS5DT0RFLjEgICAgICAgICAgICAgICAgICAgIFZFSElDTEUuVFlQRS5DT0RFLjJcbiBQQVNTRU5HRVIgVkVISUNMRSAgICAgICAgICAgIDo1NzkzNzIgICBQQVNTRU5HRVIgVkVISUNMRSAgICAgICAgICAgIDo0Mzg3MDEgIFxuIFNQT1JUIFVUSUxJVFkgLyBTVEFUSU9OIFdBR09OOjIxODUzNyAgIFNQT1JUIFVUSUxJVFkgLyBTVEFUSU9OIFdBR09OOjE2NTQ1NSAgXG4gVEFYSSAgICAgICAgICAgICAgICAgICAgICAgICA6IDM3MTkwICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA6MTM0OTk3ICBcbiBWQU4gICAgICAgICAgICAgICAgICAgICAgICAgIDogMjY1MTEgICBVTktOT1dOICAgICAgICAgICAgICAgICAgICAgIDogODA4NjQgIFxuIE9USEVSICAgICAgICAgICAgICAgICAgICAgICAgOiAyNDY5OSAgIFRBWEkgICAgICAgICAgICAgICAgICAgICAgICAgOiAzMTIwNSAgXG4gVU5LTk9XTiAgICAgICAgICAgICAgICAgICAgICA6IDIwNzEzICAgT1RIRVIgICAgICAgICAgICAgICAgICAgICAgICA6IDI1MjQ5ICBcbiAoT3RoZXIpICAgICAgICAgICAgICAgICAgICAgIDogODM3NzggICAoT3RoZXIpICAgICAgICAgICAgICAgICAgICAgIDoxMTQzMjkgIFxuICAgICAgICAgICAgICAgICAgICBWRUhJQ0xFLlRZUEUuQ09ERS4zICAgICAgICAgICAgICAgICAgICBWRUhJQ0xFLlRZUEUuQ09ERS40XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICA6OTI2ODc4ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA6OTc3MDg1ICBcbiBQQVNTRU5HRVIgVkVISUNMRSAgICAgICAgICAgIDogMzgxODEgICBQQVNTRU5HRVIgVkVISUNMRSAgICAgICAgICAgIDogIDg0NDEgIFxuIFNQT1JUIFVUSUxJVFkgLyBTVEFUSU9OIFdBR09OOiAxNTc2MSAgIFNQT1JUIFVUSUxJVFkgLyBTVEFUSU9OIFdBR09OOiAgMzU1MyAgXG4gVU5LTk9XTiAgICAgICAgICAgICAgICAgICAgICA6ICAzMjQwICAgVU5LTk9XTiAgICAgICAgICAgICAgICAgICAgICA6ICAgNTgzICBcbiBWQU4gICAgICAgICAgICAgICAgICAgICAgICAgIDogIDE0MDEgICBWQU4gICAgICAgICAgICAgICAgICAgICAgICAgIDogICAyNDggIFxuIFRBWEkgICAgICAgICAgICAgICAgICAgICAgICAgOiAgMTE2MyAgIE9USEVSICAgICAgICAgICAgICAgICAgICAgICAgOiAgIDIwNSAgXG4gKE90aGVyKSAgICAgICAgICAgICAgICAgICAgICA6ICA0MTc2ICAgKE90aGVyKSAgICAgICAgICAgICAgICAgICAgICA6ICAgNjg1ICBcbiAgICAgICAgICAgICAgICAgICAgVkVISUNMRS5UWVBFLkNPREUuNVxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgOjk4NzQzNiAgXG4gUEFTU0VOR0VSIFZFSElDTEUgICAgICAgICAgICA6ICAyMDcyICBcbiBTUE9SVCBVVElMSVRZIC8gU1RBVElPTiBXQUdPTjogICA5NTggIFxuIFVOS05PV04gICAgICAgICAgICAgICAgICAgICAgOiAgICA5NCAgXG4gT1RIRVIgICAgICAgICAgICAgICAgICAgICAgICA6ICAgIDUyICBcbiBWQU4gICAgICAgICAgICAgICAgICAgICAgICAgIDogICAgNTAgIFxuIChPdGhlcikgICAgICAgICAgICAgICAgICAgICAgOiAgIDEzOCAgXG4ifQ== -->
+<pre><code>         DATE             TIME                 BOROUGH          ZIP.CODE     
+ 01/21/2014:  1161   16:00  : 12792                :260725   Min.   :10000   
+ 01/18/2015:   960   15:00  : 12748   BRONX        : 95396   1st Qu.:10075   
+ 02/03/2014:   960   17:00  : 12597   BROOKLYN     :223552   Median :11205   
+ 03/06/2015:   936   18:00  : 11641   MANHATTAN    :187571   Mean   :10808   
+ 01/07/2017:   887   14:00  : 11094   QUEENS       :189619   3rd Qu.:11236   
+ 09/30/2016:   872   13:00  : 10365   STATEN ISLAND: 33937   Max.   :11697   
+ (Other)   :985024   (Other):919563                          NA's   :260826  
+    LATITUDE        LONGITUDE                            LOCATION     
+ Min.   : 0.00    Min.   :-201.36                            :201443  
+ 1st Qu.:40.67    1st Qu.: -73.98   (40.6960346, -73.9845292):   673  
+ Median :40.72    Median : -73.93   (40.7606005, -73.9643142):   544  
+ Mean   :40.72    Mean   : -73.92   (40.7572323, -73.9897922):   485  
+ 3rd Qu.:40.77    3rd Qu.: -73.87   (40.6757357, -73.8968533):   480  
+ Max.   :40.91    Max.   :   0.00   (40.6585778, -73.8906229):   464  
+ NA's   :201443   NA's   :201443    (Other)                  :786711  
+            ON.STREET.NAME   CROSS.STREET.NAME
+                   :188246           :217648  
+ BROADWAY          : 10832   3 AVENUE: 11407  
+ ATLANTIC AVENUE   :  9354   BROADWAY: 11088  
+ NORTHERN BOULEVARD:  7490   2 AVENUE:  9678  
+ 3 AVENUE          :  6864   5 AVENUE:  7846  
+ FLATBUSH AVENUE   :  6500   7 AVENUE:  7312  
+ (Other)           :761514   (Other) :725821  
+                                 OFF.STREET.NAME   NUMBER.OF.PERSONS.INJURED
+                                         :916764   Min.   : 0.0000          
+ PARKING LOT 110-00 ROCKAWAY BOULEVARD   :   150   1st Qu.: 0.0000          
+ PARKING LOT-772 EDGEWATER RD            :    91   Median : 0.0000          
+ PARKING LOT OF 110-00 ROCKAWAY BOULEVARD:    90   Mean   : 0.2552          
+ 3 AVENUE                                :    72   3rd Qu.: 0.0000          
+ 2 AVENUE                                :    67   Max.   :43.0000          
+ (Other)                                 : 73566                            
+ NUMBER.OF.PERSONS.KILLED NUMBER.OF.PEDESTRIANS.INJURED
+ Min.   :0.000000         Min.   : 0.00000             
+ 1st Qu.:0.000000         1st Qu.: 0.00000             
+ Median :0.000000         Median : 0.00000             
+ Mean   :0.001214         Mean   : 0.05455             
+ 3rd Qu.:0.000000         3rd Qu.: 0.00000             
+ Max.   :5.000000         Max.   :15.00000             
+                                                       
+ NUMBER.OF.PEDESTRIANS.KILLED NUMBER.OF.CYCLIST.INJURED
+ Min.   :0.0000000            Min.   :0.00000          
+ 1st Qu.:0.0000000            1st Qu.:0.00000          
+ Median :0.0000000            Median :0.00000          
+ Mean   :0.0006833            Mean   :0.02093          
+ 3rd Qu.:0.0000000            3rd Qu.:0.00000          
+ Max.   :2.0000000            Max.   :6.00000          
+                                                       
+ NUMBER.OF.CYCLIST.KILLED NUMBER.OF.MOTORIST.INJURED NUMBER.OF.MOTORIST.KILLED
+ Min.   :0.00e+00         Min.   : 0.0000            Min.   :0.000000         
+ 1st Qu.:0.00e+00         1st Qu.: 0.0000            1st Qu.:0.000000         
+ Median :0.00e+00         Median : 0.0000            Median :0.000000         
+ Mean   :7.47e-05         Mean   : 0.1927            Mean   :0.000463         
+ 3rd Qu.:0.00e+00         3rd Qu.: 0.0000            3rd Qu.:0.000000         
+ Max.   :1.00e+00         Max.   :43.0000            Max.   :5.000000         
+                                                                              
+                CONTRIBUTING.FACTOR.VEHICLE.1
+ Unspecified                   :523736       
+ Driver Inattention/Distraction:127688       
+ Fatigued/Drowsy               : 48249       
+ Failure to Yield Right-of-Way : 42948       
+ Other Vehicular               : 30393       
+ Backing Unsafely              : 27886       
+ (Other)                       :189900       
+                CONTRIBUTING.FACTOR.VEHICLE.2
+ Unspecified                   :738985       
+                               :123724       
+ Driver Inattention/Distraction: 37843       
+ Other Vehicular               : 17711       
+ Fatigued/Drowsy               : 13016       
+ Failure to Yield Right-of-Way :  9087       
+ (Other)                       : 50434       
+                CONTRIBUTING.FACTOR.VEHICLE.3
+                               :925696       
+ Unspecified                   : 59537       
+ Other Vehicular               :  1225       
+ Fatigued/Drowsy               :  1122       
+ Driver Inattention/Distraction:  1100       
+ Pavement Slippery             :   234       
+ (Other)                       :  1886       
+                CONTRIBUTING.FACTOR.VEHICLE.4
+                               :976717       
+ Unspecified                   : 12938       
+ Fatigued/Drowsy               :   222       
+ Other Vehicular               :   221       
+ Driver Inattention/Distraction:   192       
+ Pavement Slippery             :    67       
+ (Other)                       :   443       
+                CONTRIBUTING.FACTOR.VEHICLE.5   UNIQUE.KEY     
+                               :987360        Min.   :     22  
+ Unspecified                   :  3186        1st Qu.: 249509  
+ Other Vehicular               :    52        Median :3131520  
+ Fatigued/Drowsy               :    48        Mean   :2054070  
+ Driver Inattention/Distraction:    36        3rd Qu.:3379220  
+ Pavement Slippery             :    23        Max.   :3627969  
+ (Other)                       :    95                         
+                    VEHICLE.TYPE.CODE.1                    VEHICLE.TYPE.CODE.2
+ PASSENGER VEHICLE            :579372   PASSENGER VEHICLE            :438701  
+ SPORT UTILITY / STATION WAGON:218537   SPORT UTILITY / STATION WAGON:165455  
+ TAXI                         : 37190                                :134997  
+ VAN                          : 26511   UNKNOWN                      : 80864  
+ OTHER                        : 24699   TAXI                         : 31205  
+ UNKNOWN                      : 20713   OTHER                        : 25249  
+ (Other)                      : 83778   (Other)                      :114329  
+                    VEHICLE.TYPE.CODE.3                    VEHICLE.TYPE.CODE.4
+                              :926878                                :977085  
+ PASSENGER VEHICLE            : 38181   PASSENGER VEHICLE            :  8441  
+ SPORT UTILITY / STATION WAGON: 15761   SPORT UTILITY / STATION WAGON:  3553  
+ UNKNOWN                      :  3240   UNKNOWN                      :   583  
+ VAN                          :  1401   VAN                          :   248  
+ TAXI                         :  1163   OTHER                        :   205  
+ (Other)                      :  4176   (Other)                      :   685  
+                    VEHICLE.TYPE.CODE.5
+                              :987436  
+ PASSENGER VEHICLE            :  2072  
+ SPORT UTILITY / STATION WAGON:   958  
+ UNKNOWN                      :    94  
+ OTHER                        :    52  
+ VAN                          :    50  
+ (Other)                      :   138  </code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+</div>
+<div id="dataset-variables" class="section level3">
+<h3>Dataset Variables</h3>
+<p>Our Dataset structure revealed the variables and their classes <code>sapply(names(dt), function(x) paste0(x, ' is class: ', class(dt[[x]])))</code>= <br><b>DATE</b><em> is class: </em><u>factor</u>, <br><b>TIME</b><em> is class: </em><u>factor</u>, <br><b>BOROUGH</b><em> is class: </em><u>factor</u>, <br><b>ZIP.CODE</b><em> is class: </em><u>integer</u>, <br><b>LATITUDE</b><em> is class: </em><u>numeric</u>, <br><b>LONGITUDE</b><em> is class: </em><u>numeric</u>, <br><b>LOCATION</b><em> is class: </em><u>factor</u>, <br><b>ON.STREET.NAME</b><em> is class: </em><u>factor</u>, <br><b>CROSS.STREET.NAME</b><em> is class: </em><u>factor</u>, <br><b>OFF.STREET.NAME</b><em> is class: </em><u>factor</u>, <br><b>NUMBER.OF.PERSONS.INJURED</b><em> is class: </em><u>integer</u>, <br><b>NUMBER.OF.PERSONS.KILLED</b><em> is class: </em><u>integer</u>, <br><b>NUMBER.OF.PEDESTRIANS.INJURED</b><em> is class: </em><u>integer</u>, <br><b>NUMBER.OF.PEDESTRIANS.KILLED</b><em> is class: </em><u>integer</u>, <br><b>NUMBER.OF.CYCLIST.INJURED</b><em> is class: </em><u>integer</u>, <br><b>NUMBER.OF.CYCLIST.KILLED</b><em> is class: </em><u>integer</u>, <br><b>NUMBER.OF.MOTORIST.INJURED</b><em> is class: </em><u>integer</u>, <br><b>NUMBER.OF.MOTORIST.KILLED</b><em> is class: </em><u>integer</u>, <br><b>CONTRIBUTING.FACTOR.VEHICLE.1</b><em> is class: </em><u>factor</u>, <br><b>CONTRIBUTING.FACTOR.VEHICLE.2</b><em> is class: </em><u>factor</u>, <br><b>CONTRIBUTING.FACTOR.VEHICLE.3</b><em> is class: </em><u>factor</u>, <br><b>CONTRIBUTING.FACTOR.VEHICLE.4</b><em> is class: </em><u>factor</u>, <br><b>CONTRIBUTING.FACTOR.VEHICLE.5</b><em> is class: </em><u>factor</u>, <br><b>UNIQUE.KEY</b><em> is class: </em><u>integer</u>, <br><b>VEHICLE.TYPE.CODE.1</b><em> is class: </em><u>factor</u>, <br><b>VEHICLE.TYPE.CODE.2</b><em> is class: </em><u>factor</u>, <br><b>VEHICLE.TYPE.CODE.3</b><em> is class: </em><u>factor</u>, <br><b>VEHICLE.TYPE.CODE.4</b><em> is class: </em><u>factor</u>, <br><b>VEHICLE.TYPE.CODE.5</b><em> is class: </em><u>factor</u></p>
+</div>
+<div id="understanding-conclusion" class="section level3">
+<h3>Understanding Conclusion</h3>
+<p>With a goal of <em>reducing accidents in Brooklyn</em> our main goal is to reduce observations of accidents where <code>BOROUGH == &quot;Brooklyn&quot;</code>.</p>
+<div id="proposed-solutions" class="section level4">
+<h4>Proposed Solutions:</h4>
+<ul>
+<li>Explore facets of variables
+<ul>
+<li>Datetime
+<ul>
+<li>Time of day<br />
+</li>
+<li>Day of week</li>
+<li>Day of month</li>
+<li>Day or Month of year</li>
+</ul></li>
+</ul></li>
+<li>Explore trends
+<ul>
+<li>Across time</li>
+<li>Across space
+<ul>
+<li>Burrough</li>
+<li>Zip</li>
+<li>Street Name (On, Cross, Off)</li>
+</ul></li>
+<li>Across Vehicle Type</li>
+</ul></li>
+</ul>
+<p><strong>1. Subset:</strong> If we look at the subset of the dataset where BOROUGH is “Brooklyn” <code>dt[BOROUGH == &quot;Brooklyn&quot;,]</code> we want to find patterns in the existing observations and propose methods to eliminate these patterns.</p>
+<ul>
+<li>Explore facets of variables
+<ul>
+<li>Datetime
+<ul>
+<li>Time of day<br />
+</li>
+<li>Day of week</li>
+<li>Day of month</li>
+<li>Day or Month of year</li>
+</ul></li>
+</ul></li>
+<li>Explore trends
+<ul>
+<li>Across time</li>
+</ul></li>
+</ul>
+<p><strong>2. Other Success (<em>over time</em>):</strong> Look for reductions in other burroughs over time and propose similar efforts.</p>
 <!-- rnb-text-end -->
 </div>
 </div>
 </div>
+</div>
 
-<div id="rmd-source-code">LS0tCnRpdGxlOiAiTllDIE9wZW4gRGF0YSBFeHBsb3JhdGlvbiIKb3V0cHV0OiBodG1sX25vdGVib29rCi0tLQoKIyBBYm91dAoKVGhpcyBub3RlYm9vayBleHBsb3JlcyB0aGUgbW9yZSByZWNlbnQgZGF0YSBmcm9tIE5ZQyBPcGVuIERhdGEgW0RhdGEgU2V0XShodHRwczovL2RhdGEuY2l0eW9mbmV3eW9yay51cy9QdWJsaWMtU2FmZXR5L05ZUEQtTW90b3ItVmVoaWNsZS1Db2xsaXNpb25zL2g5Z2ktbng5NSkuCgpUaGlzIGRhdGFzZXQgY2FuIGFsc28gYmUgcmVhY2hlZCBhbmQgaW50ZXJhY3RlZCB3aXRoIHRocm91Z2ggaXRzIFtHb29nbGUgQmlnUXVlcnkgbG9jYXRpb25dKGh0dHBzOi8vYmlncXVlcnkuY2xvdWQuZ29vZ2xlLmNvbS90YWJsZS9iaWdxdWVyeS1wdWJsaWMtZGF0YTpuZXdfeW9yay5ueXBkX212X2NvbGxpc2lvbnM/dGFiPXNjaGVtYSkKCiMjIFNldHVwCgojIyMgTG9hZCBMaWJyYXJpZXMKCkxpYnJhcmllcyB0aGF0IHdpbGwgYmUgdXNlZCBkdXJpbmcgZXhwbG9yYXRpb24KYGBge3IgbGlicmFyaWVzfQpsaWJyYXJ5KG1hZ3JpdHRyKQpsaWJyYXJ5KGRwbHlyKQpgYGAKCiMjIyBMb2FkIERhdGEKCkxvYWQgZGF0YSBmcm9tIC9kYXRhIGRpcmVjdG9yeSBhbmQgaW50byBtZW1vcnkKYGBge3IgaW1wb3J0LWRhdGF9CmRhdGEgPC0gcmVhZC5jc3YoZmlsZSA9ICJkYXRhL05ZUERfTW90b3JfVmVoaWNsZV9Db2xsaXNpb25zLmNzdiIpCmBgYAoK</div>
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiTllDIE9wZW4gRGF0YSBFeHBsb3JhdGlvbiIKb3V0cHV0OiBodG1sX25vdGVib29rCi0tLQoKIyBBYm91dAoKVGhpcyBub3RlYm9vayBleHBsb3JlcyB0aGUgbW9yZSByZWNlbnQgZGF0YSBmcm9tIE5ZQyBPcGVuIERhdGEgW0RhdGEgU2V0XShodHRwczovL2RhdGEuY2l0eW9mbmV3eW9yay51cy9QdWJsaWMtU2FmZXR5L05ZUEQtTW90b3ItVmVoaWNsZS1Db2xsaXNpb25zL2g5Z2ktbng5NSkuCgpUaGlzIGRhdGFzZXQgY2FuIGFsc28gYmUgcmVhY2hlZCBhbmQgaW50ZXJhY3RlZCB3aXRoIHRocm91Z2ggaXRzIFtHb29nbGUgQmlnUXVlcnkgbG9jYXRpb25dKGh0dHBzOi8vYmlncXVlcnkuY2xvdWQuZ29vZ2xlLmNvbS90YWJsZS9iaWdxdWVyeS1wdWJsaWMtZGF0YTpuZXdfeW9yay5ueXBkX212X2NvbGxpc2lvbnM/dGFiPXNjaGVtYSkKCiMjIEV4ZXJjaXNlIE92ZXJ2aWV3CgpGb3IgdGhpcyBleGVyY2lzZSwgd2UnZCBsaWtlIHlvdSB0byBhbmFseXplIGRhdGEgb24gTmV3IFlvcmsgbW90b3IgdmVoaWNsZSBjb2xsaXNpb25zIGFuZCBhbnN3ZXIgdGhlIGZvbGxvd2luZyBxdWVzdGlvbjogICAgCioqV2hhdCBhcmUgeW91ciBpZGVhcyBmb3IgcmVkdWNpbmcgYWNjaWRlbnRzIGluIEJyb29rbHluPyoqICAgCkltYWdpbmUgeW91IGFyZSBwcmVwYXJpbmcgdGhpcyBwcmVzZW50YXRpb24gZm9yIHRoZSBjaXR5IGNvdW5jaWwgd2hvIHdpbGwgdXNlIGl0IHRvIGluZm9ybSBuZXcgbGVnaXNsYXRpb24gYW5kL29yIHByb2plY3RzLgoKIyMjIFRPRE8KCkJyaWVmbHk6ICAKCjEuIEluc3BlY3QgZGF0YXNldCAgCjIuIElkZW50aWZ5IGRlcGVuZGVudCAvIG91dGNvbWUgdmFyaWFibGVzICAKMy4gaXRlcmF0ZSBvdmVyOiAgCiAgICBhLiBoeXBvdGhlc2l6ZSBwcmVkaWN0b3IgdmFyaWFibGVzICAKICAgIGIuIHRlc3QgIAogICAgYy4gZG9jdW1lbnQgJiBjb25zaWRlciByZXN1bHRzICAKICAKICAgICAgCi0gU2V0dXAgICAKICAgICsgWyBdIExpYnJhcmllcyAoX2NvbnRpbnVhbF8pICAKICAgICsgW3hdIGRhdGEgIAotIFVuZGVyc3RhbmQKICAgICsgW3hdIHN0cnVjdHVyZSAgCiAgICArIFt4XSBzdW1tYXJ5ICAKICAgICsgWyBdIGlkZW50aWZ5IGRlcGVuZGVudCB2YXJpYWJsZXMgIAoKIyMgU2V0dXAKCiMjIyBMb2FkIExpYnJhcmllcwoKTGlicmFyaWVzIHRoYXQgd2lsbCBiZSB1c2VkIGR1cmluZyBleHBsb3JhdGlvbgpgYGB7ciBsaWJyYXJpZXN9CmxpYnJhcnkobWFncml0dHIpCmxpYnJhcnkoZHBseXIpCmBgYAoKIyMjIExvYWQgRGF0YQoKTG9hZCBkYXRhIGZyb20gL2RhdGEgZGlyZWN0b3J5IGFuZCBpbnRvIG1lbW9yeQpgYGB7ciBpbXBvcnQtZGF0YSwgY2FjaGU9VFJVRX0KZHQgPC0gcmVhZC5jc3YoZmlsZSA9ICJkYXRhL05ZUERfTW90b3JfVmVoaWNsZV9Db2xsaXNpb25zLmNzdiIpCmBgYAoKIyMgVW5kZXJ0YW5kIERhdGFzZXQKCiMjIyBEYXRhc2V0IFN0cnVjdHVyZQoKSW5zcGVjdCBzdHJ1Y3R1cmUgb2YgZGF0YXNldCB3aXRoIHRoZSBgc3RyKClgIGNvbW1hbmQ6CmBgYHtyIGRhdGEtc3RydWN0dXJlfQpzdHIoZHQpCmBgYAoKIyMjIERhdGFzZXQgU3VtbWFyeQoKSW5zcGVjdCBzdW1tYXJ5IG9mIGRhdGFzZXQgd2l0aCBgc3VtbWFyeSgpYCBjb21tYW5kOgpgYGB7ciBkYXRhLXN1bW1hcnl9CnN1bW1hcnkoZHQpCmBgYAoKCiMjIyBEYXRhc2V0IFZhcmlhYmxlcwoKT3VyIERhdGFzZXQgc3RydWN0dXJlIHJldmVhbGVkIHRoZSB2YXJpYWJsZXMgYW5kIHRoZWlyIGNsYXNzZXMgYHNhcHBseShuYW1lcyhkdCksIGZ1bmN0aW9uKHgpIHBhc3RlMCh4LCAnIGlzIGNsYXNzOiAnLCBjbGFzcyhkdFtbeF1dKSkpYD0gYHIgc2FwcGx5KG5hbWVzKGR0KSwgZnVuY3Rpb24oeCkgcGFzdGUwKCc8YnI+JywnPGI+Jyx4LCc8L2I+JywnPGVtPicsJyBpcyBjbGFzczogJywnPC9lbT4nLCc8dT4nLGNsYXNzKGR0W1t4XV0pLCc8L3U+JykpYAoKIyMjIFVuZGVyc3RhbmRpbmcgQ29uY2x1c2lvbiAgCgpXaXRoIGEgZ29hbCBvZiBfcmVkdWNpbmcgYWNjaWRlbnRzIGluIEJyb29rbHluXyBvdXIgbWFpbiBnb2FsIGlzIHRvIHJlZHVjZSBvYnNlcnZhdGlvbnMgb2YgYWNjaWRlbnRzIHdoZXJlIGBCT1JPVUdIID09ICJCcm9va2x5biJgLiAgCgojIyMjIFByb3Bvc2VkIFNvbHV0aW9uczogIAoKLSBFeHBsb3JlIGZhY2V0cyBvZiB2YXJpYWJsZXMgIAogICAgKyBEYXRldGltZSAgCiAgICAgICAgKyBUaW1lIG9mIGRheSAgCiAgICAgICAgKyBEYXkgb2Ygd2VlawogICAgICAgICsgRGF5IG9mIG1vbnRoCiAgICAgICAgKyBEYXkgb3IgTW9udGggb2YgeWVhcgotIEV4cGxvcmUgdHJlbmRzICAKICAgICsgQWNyb3NzIHRpbWUKICAgICsgQWNyb3NzIHNwYWNlCiAgICAgICAgKyBCdXJyb3VnaAogICAgICAgICsgWmlwCiAgICAgICAgKyBTdHJlZXQgTmFtZSAoT24sIENyb3NzLCBPZmYpCiAgICArIEFjcm9zcyBWZWhpY2xlIFR5cGUKCgoqKjEuIFN1YnNldDoqKgpJZiB3ZSBsb29rIGF0IHRoZSBzdWJzZXQgb2YgdGhlIGRhdGFzZXQgd2hlcmUgQk9ST1VHSCBpcyAiQnJvb2tseW4iIGBkdFtCT1JPVUdIID09ICJCcm9va2x5biIsXWAgd2Ugd2FudCB0byBmaW5kIHBhdHRlcm5zIGluIHRoZSBleGlzdGluZyBvYnNlcnZhdGlvbnMgYW5kIHByb3Bvc2UgbWV0aG9kcyB0byBlbGltaW5hdGUgdGhlc2UgcGF0dGVybnMuICAKCi0gRXhwbG9yZSBmYWNldHMgb2YgdmFyaWFibGVzICAKICAgICsgRGF0ZXRpbWUgIAogICAgICAgICsgVGltZSBvZiBkYXkgIAogICAgICAgICsgRGF5IG9mIHdlZWsKICAgICAgICArIERheSBvZiBtb250aAogICAgICAgICsgRGF5IG9yIE1vbnRoIG9mIHllYXIKLSBFeHBsb3JlIHRyZW5kcyAgCiAgICArIEFjcm9zcyB0aW1lCgoqKjIuIE90aGVyIFN1Y2Nlc3MgKF9vdmVyIHRpbWVfKToqKgpMb29rIGZvciByZWR1Y3Rpb25zIGluIG90aGVyIGJ1cnJvdWdocyBvdmVyIHRpbWUgYW5kIHByb3Bvc2Ugc2ltaWxhciBlZmZvcnRzLgoK</div>
 
 
 

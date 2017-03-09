@@ -9,6 +9,32 @@ This notebook explores the more recent data from NYC Open Data [Data Set](https:
 
 This dataset can also be reached and interacted with through its [Google BigQuery location](https://bigquery.cloud.google.com/table/bigquery-public-data:new_york.nypd_mv_collisions?tab=schema)
 
+## Exercise Overview
+
+For this exercise, we'd like you to analyze data on New York motor vehicle collisions and answer the following question:    
+**What are your ideas for reducing accidents in Brooklyn?**   
+Imagine you are preparing this presentation for the city council who will use it to inform new legislation and/or projects.
+
+### TODO
+
+Briefly:  
+
+1. Inspect dataset  
+2. Identify dependent / outcome variables  
+3. iterate over:  
+    a. hypothesize predictor variables  
+    b. test  
+    c. document & consider results  
+  
+      
+- Setup   
+    + [ ] Libraries (_continual_)  
+    + [x] data  
+- Understand
+    + [x] structure  
+    + [x] summary  
+    + [ ] identify dependent variables  
+
 ## Setup
 
 ### Load Libraries
@@ -22,7 +48,64 @@ library(dplyr)
 ### Load Data
 
 Load data from /data directory and into memory
-```{r import-data}
-data <- read.csv(file = "data/NYPD_Motor_Vehicle_Collisions.csv")
+```{r import-data, cache=TRUE}
+dt <- read.csv(file = "data/NYPD_Motor_Vehicle_Collisions.csv")
 ```
+
+## Undertand Dataset
+
+### Dataset Structure
+
+Inspect structure of dataset with the `str()` command:
+```{r data-structure}
+str(dt)
+```
+
+### Dataset Summary
+
+Inspect summary of dataset with `summary()` command:
+```{r data-summary}
+summary(dt)
+```
+
+
+### Dataset Variables
+
+Our Dataset structure revealed the variables and their classes `sapply(names(dt), function(x) paste0(x, ' is class: ', class(dt[[x]])))`= `r sapply(names(dt), function(x) paste0('<br>','<b>',x,'</b>','<em>',' is class: ','</em>','<u>',class(dt[[x]]),'</u>'))`
+
+### Understanding Conclusion  
+
+With a goal of _reducing accidents in Brooklyn_ our main goal is to reduce observations of accidents where `BOROUGH == "Brooklyn"`.  
+
+#### Proposed Solutions:  
+
+- Explore facets of variables  
+    + Datetime  
+        + Time of day  
+        + Day of week
+        + Day of month
+        + Day or Month of year
+- Explore trends  
+    + Across time
+    + Across space
+        + Burrough
+        + Zip
+        + Street Name (On, Cross, Off)
+    + Across Vehicle Type
+
+
+**1. Subset:**
+If we look at the subset of the dataset where BOROUGH is "Brooklyn" `dt[BOROUGH == "Brooklyn",]` we want to find patterns in the existing observations and propose methods to eliminate these patterns.  
+
+- Explore facets of variables  
+    + Datetime  
+        + Time of day  
+        + Day of week
+        + Day of month
+        + Day or Month of year
+- Explore trends  
+    + Across time
+
+**2. Other Success (_over time_):**
+Look for reductions in other burroughs over time and propose similar efforts.
 
