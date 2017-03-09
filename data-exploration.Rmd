@@ -3,6 +3,26 @@ title: "NYC Open Data Exploration"
 output: html_notebook
 ---
 
+# About
+
 This notebook explores the more recent data from NYC Open Data [Data Set](https://data.cityofnewyork.us/Public-Safety/NYPD-Motor-Vehicle-Collisions/h9gi-nx95).
 
 This dataset can also be reached and interacted with through its [Google BigQuery location](https://bigquery.cloud.google.com/table/bigquery-public-data:new_york.nypd_mv_collisions?tab=schema)
+
+## Setup
+
+### Load Libraries
+
+Libraries that will be used during exploration
+```{r libraries}
+library(magrittr)
+library(dplyr)
+```
+
+### Load Data
+
+Load data from /data directory and into memory
+```{r import-data}
+data <- read.csv(file = "data/NYPD_Motor_Vehicle_Collisions.csv")
+```
+

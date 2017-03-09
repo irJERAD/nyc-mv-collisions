@@ -172,11 +172,49 @@ $(document).ready(function () {
 
 
 <!-- rnb-text-begin -->
+<div id="about" class="section level1">
+<h1>About</h1>
 <p>This notebook explores the more recent data from NYC Open Data <a href="https://data.cityofnewyork.us/Public-Safety/NYPD-Motor-Vehicle-Collisions/h9gi-nx95">Data Set</a>.</p>
 <p>This dataset can also be reached and interacted with through its <a href="https://bigquery.cloud.google.com/table/bigquery-public-data:new_york.nypd_mv_collisions?tab=schema">Google BigQuery location</a></p>
+<div id="setup" class="section level2">
+<h2>Setup</h2>
+<div id="load-libraries" class="section level3">
+<h3>Load Libraries</h3>
+<p>Libraries that will be used during exploration</p>
 <!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShkcGx5cilcblxuYGBgIn0= -->
+<pre class="r"><code>library(dplyr)
+</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiXG5BdHRhY2hpbmcgcGFja2FnZTog4oCYZHBseXLigJlcblxuVGhlIGZvbGxvd2luZyBvYmplY3RzIGFyZSBtYXNrZWQgZnJvbSDigJhwYWNrYWdlOnN0YXRz4oCZOlxuXG4gICAgZmlsdGVyLCBsYWdcblxuVGhlIGZvbGxvd2luZyBvYmplY3RzIGFyZSBtYXNrZWQgZnJvbSDigJhwYWNrYWdlOmJhc2XigJk6XG5cbiAgICBpbnRlcnNlY3QsIHNldGRpZmYsIHNldGVxdWFsLCB1bmlvblxuIn0= -->
+<pre><code>
+Attaching package: ‘dplyr’
 
-<div id="rmd-source-code">LS0tCnRpdGxlOiAiTllDIE9wZW4gRGF0YSBFeHBsb3JhdGlvbiIKb3V0cHV0OiBodG1sX25vdGVib29rCi0tLQoKVGhpcyBub3RlYm9vayBleHBsb3JlcyB0aGUgbW9yZSByZWNlbnQgZGF0YSBmcm9tIE5ZQyBPcGVuIERhdGEgW0RhdGEgU2V0XShodHRwczovL2RhdGEuY2l0eW9mbmV3eW9yay51cy9QdWJsaWMtU2FmZXR5L05ZUEQtTW90b3ItVmVoaWNsZS1Db2xsaXNpb25zL2g5Z2ktbng5NSkuCgpUaGlzIGRhdGFzZXQgY2FuIGFsc28gYmUgcmVhY2hlZCBhbmQgaW50ZXJhY3RlZCB3aXRoIHRocm91Z2ggaXRzIFtHb29nbGUgQmlnUXVlcnkgbG9jYXRpb25dKGh0dHBzOi8vYmlncXVlcnkuY2xvdWQuZ29vZ2xlLmNvbS90YWJsZS9iaWdxdWVyeS1wdWJsaWMtZGF0YTpuZXdfeW9yay5ueXBkX212X2NvbGxpc2lvbnM/dGFiPXNjaGVtYSk=</div>
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+</div>
+<div id="load-data" class="section level3">
+<h3>Load Data</h3>
+<p>Load data from /data directory and into memory</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+</div>
+</div>
+</div>
+
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiTllDIE9wZW4gRGF0YSBFeHBsb3JhdGlvbiIKb3V0cHV0OiBodG1sX25vdGVib29rCi0tLQoKIyBBYm91dAoKVGhpcyBub3RlYm9vayBleHBsb3JlcyB0aGUgbW9yZSByZWNlbnQgZGF0YSBmcm9tIE5ZQyBPcGVuIERhdGEgW0RhdGEgU2V0XShodHRwczovL2RhdGEuY2l0eW9mbmV3eW9yay51cy9QdWJsaWMtU2FmZXR5L05ZUEQtTW90b3ItVmVoaWNsZS1Db2xsaXNpb25zL2g5Z2ktbng5NSkuCgpUaGlzIGRhdGFzZXQgY2FuIGFsc28gYmUgcmVhY2hlZCBhbmQgaW50ZXJhY3RlZCB3aXRoIHRocm91Z2ggaXRzIFtHb29nbGUgQmlnUXVlcnkgbG9jYXRpb25dKGh0dHBzOi8vYmlncXVlcnkuY2xvdWQuZ29vZ2xlLmNvbS90YWJsZS9iaWdxdWVyeS1wdWJsaWMtZGF0YTpuZXdfeW9yay5ueXBkX212X2NvbGxpc2lvbnM/dGFiPXNjaGVtYSkKCiMjIFNldHVwCgojIyMgTG9hZCBMaWJyYXJpZXMKCkxpYnJhcmllcyB0aGF0IHdpbGwgYmUgdXNlZCBkdXJpbmcgZXhwbG9yYXRpb24KYGBge3IgbGlicmFyaWVzfQpsaWJyYXJ5KG1hZ3JpdHRyKQpsaWJyYXJ5KGRwbHlyKQpgYGAKCiMjIyBMb2FkIERhdGEKCkxvYWQgZGF0YSBmcm9tIC9kYXRhIGRpcmVjdG9yeSBhbmQgaW50byBtZW1vcnkKYGBge3IgaW1wb3J0LWRhdGF9CmRhdGEgPC0gcmVhZC5jc3YoZmlsZSA9ICJkYXRhL05ZUERfTW90b3JfVmVoaWNsZV9Db2xsaXNpb25zLmNzdiIpCmBgYAoK</div>
 
 
 
