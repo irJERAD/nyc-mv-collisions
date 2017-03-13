@@ -40,9 +40,13 @@ Briefly:
 ### Load Libraries
 
 Libraries that will be used during exploration
-```{r libraries}
+```{r libraries, warning=FALSE}
 library(magrittr)
 library(dplyr)
+library(ggplot2)
+library(plotly)
+Sys.setenv('MAPBOX_TOKEN' =
+             'pk.eyJ1IjoiaXJqZXJhZCIsImEiOiJjajA4cWNkajkwMjRrMnFvNnlwMGFhZmM5In0.5PGU5SV2qdyix9tSEkjMgg')
 ```
 
 ### Load Data
@@ -72,6 +76,24 @@ summary(dt)
 ### Dataset Variables
 
 Our Dataset structure revealed the variables and their classes `sapply(names(dt), function(x) paste0(x, ' is class: ', class(dt[[x]])))`= `r sapply(names(dt), function(x) paste0('<br>','<b>',x,'</b>','<em>',' is class: ','</em>','<u>',class(dt[[x]]),'</u>'))`
+
+### Clean Data
+
+Change Unmarked Boroughs from NA to "NONE GIVEN"
+```{r}
+levels(dt$BOROUGH)[levels(dt$BOROUGH) == ""] <- "BOROUGH NA"
+```
+
+### Map Variables  
+
+With Latitude and Longitude present and appearing to be fairly well documented, let's take a quick look at how these accidents look over an interactive world map (incase of mistakes outlying somewhere aside from New York). We will use the `BOROUGH` variable as a factor. This gives the geographic association of each borough and allows us early forsight into anything specific about our point of interest `BOURGH == "BROOKLYN"`
+```{r map-vars, warning=FALSE}
+mp <- dt %>% plot_mapbox(lat = ~LATITUDE, lon = ~LONGITUDE, split = ~BOROUGH, mode = 'scattermapbox')
+plotly_build(mp)
+```
+Here we can see at least one marked as `BOROUGH == "QUEENS"` sitting on the equator at lat, long (0,0). It is safe to assume that observation along with others in the Atlantic or Pacific Ocean and anywhere else outside of New York have mislabeled coordinates.  
+These would be candidates for quick removal to save time, or cleaning if coordinate location was important enough on these observations to our intended results.  
+
 
 ### Understanding Conclusion  
 
@@ -134,11 +156,12 @@ fact.1 <- brooklyn %>%
 fact.1
 ```
 
-Only 3 factor levels appear over 10,000 times in the `brooklyn$CONTRIBUTING.FACTOR.VEHICLE.1` variable.
+Only 3 factor levels appear over 10,000 times in the `brooklyn$CONTRIBUTING.FACTOR.VEHICLE.1` variable.  
 
-#### Distribution of CONTRIBUTING.FACTOR.VEHICLE.1
 
-Explore quantile distribution of `brooklyn$CONTRIBUTING.FACTOR.VEHICLE.1` variable then use cumulative distribution to calculate the probability / percentage of factor levels below 10,000 and 5,000
+#### Distribution of CONTRIBUTING.FACTOR.VEHICLE.1    
+
+Explore quantile distribution of `brooklyn$CONTRIBUTING.FACTOR.VEHICLE.1` variable then use cumulative distribution to calculate the probability / percentage of factor levels below 10,000 and 5,000:  
 ```{r fact-dist}
 quantile(fact.1$n)
 ecdf(fact.1$n)(10000)
@@ -146,4 +169,64 @@ ecdf(fact.1$n)(5000)
 ```
 
 An expected majority of `ecdf(fact.1$n)(10000)` = `r ecdf(fact.1$n)(10000) * 100`% are below 10,000 occurances.  
-Of interest is still nearly 90% below 5,000 which also provides us double the defined contributing factors (since the largest observation is listed as "Unspecified")
+Of interest is still nearly 90% below 5,000 which also provides us double the defined contributing factors (since the largest observation is listed as "Unspecified")  
+
+## Regression Analysis  
+
+Searching for important variables.  
+Mix multiple logical combinations of regressor variables against predictor variables of interest.  
+
+### Predict BOROUGH  
+
+Attemp to create a linear model trained to predict the BOROUGH location of an observation:  
+```{r}
+model1formula <- BOROUGH ~ DATE + TIME + CONTRIBUTING.FACTOR.VEHICLE.1
+## Breaks R Session - dt is almost 1M observations Too Much
+# mod1 <- lm(model1formula, data = dt)
+```
+
+naive bayes
+```{r bayes12}
+# create formula from vehicles 1 and 2 factors and code
+formula1.2 <- BOROUGH ~ CONTRIBUTING.FACTOR.VEHICLE.1 + 
+  CONTRIBUTING.FACTOR.VEHICLE.2 + VEHICLE.TYPE.CODE.1 + VEHICLE.TYPE.CODE.2
+one2bayes <- naiveBayes(formula1.2, data = dt, na.action = na.omit)
+```
+
+## Graphical Exploration
+
+### Events per Borough
+
+Start with a quick look at total events for each borough:
+```{r hour-bar}
+# create table with count of borough occurence
+boroughCount <- dt %>% group_by(BOROUGH) %>% tally(sort = TRUE)
+
+# plot bar chart of each Borough's event count
+bCNT <- plot_ly(boroughCount, x = ~BOROUGH, y = ~n, type = 'bar')
+# plot without None Given Borough
+NObCNT <- plot_ly(boroughCount[2:6,], x = ~BOROUGH, y = ~n, type = 'bar')
+
+# plot side-by-side
+subplot(bCNT, NObCNT)
+```
+After removing the unmarked borough level "NONE GIVEN" we can see that Brooklyn has the greatest number of observed events in this dataset.  
+
+Does that make Brooklyn the most dangerous place to drive? Most leathal?  
+Things to consider:  
+- Size of Brooklyn (area and total length of roads)  
+- Number of drivers in Brooklyn (perhaps driving is more popular there than Manhattan)  
+- Average driver profile (professional Cab drivers in the city have different accident distributions than family drivers in Brooklyn)  
+
+
+### Time of Day  
+
+Create a Bar chart for Accidents across hours of the day.  
+Modification to consider:  
+group by:  
+- Borough  
+- Contributing Factor  
+Scale by:  
+- Number of fatalities  
+- Number of injuries  
+
