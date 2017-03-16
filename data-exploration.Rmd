@@ -45,6 +45,8 @@ library(magrittr)
 library(dplyr)
 library(ggplot2)
 library(plotly)
+library(maps)
+library(rgeos)
 Sys.setenv('MAPBOX_TOKEN' =
              'pk.eyJ1IjoiaXJqZXJhZCIsImEiOiJjajA4cWNkajkwMjRrMnFvNnlwMGFhZmM5In0.5PGU5SV2qdyix9tSEkjMgg')
 ```
@@ -188,10 +190,9 @@ model1formula <- BOROUGH ~ DATE + TIME + CONTRIBUTING.FACTOR.VEHICLE.1
 naive bayes
 ```{r bayes12}
 # create formula from vehicles 1 and 2 factors and code
-formula1.2 <- BOROUGH ~ CONTRIBUTING.FACTOR.VEHICLE.1 + 
+formula1.2 = BOROUGH ~ CONTRIBUTING.FACTOR.VEHICLE.1 + 
   CONTRIBUTING.FACTOR.VEHICLE.2 + VEHICLE.TYPE.CODE.1 + VEHICLE.TYPE.CODE.2
-one2bayes <- naiveBayes(formula1.2, data = dt, na.action = na.omit)
-```
+b```
 
 ## Graphical Exploration
 
@@ -217,8 +218,7 @@ Things to consider:
 - Size of Brooklyn (area and total length of roads)  
 - Number of drivers in Brooklyn (perhaps driving is more popular there than Manhattan)  
 - Average driver profile (professional Cab drivers in the city have different accident distributions than family drivers in Brooklyn)  
-
-
+c
 ### Time of Day  
 
 Create a Bar chart for Accidents across hours of the day.  
@@ -229,4 +229,69 @@ group by:
 Scale by:  
 - Number of fatalities  
 - Number of injuries  
+
+### Chotorpeth
+
+```{r}
+# map pojection / options
+g <- list(
+  scope = 'New York NY',
+  projection = list(type = 'albers usa'),
+  showland = TRUE,
+  landcolor = toRGB('gray85')
+  # ,
+  # subunitwidth = 1,
+  # countrywidth = 1,
+  # subunitcolor = toRGB("white"),
+  # countrycolor = toRGB("white")
+)
+
+pMap <- plot_geo(dt)
+```
+map_data("world", "canada") %>%   
+..group_by(group) %>%   
+..plot_geo(x = ~long, y = ~lat) %>%   
+..add_markers(size = I(1))    
+
+### 
+
+Variable assets:    
+-< Location = On Street + Cross Street    
+-< Size = Number of accidents   
+-< Color grade = Damage of Accidents    
+
+### Map of Buroughs with ggplot PLotly
+
+TODO: Show method that downloads map data from NY Open Data [Here](http://stackoverflow.com/questions/32252505/how-to-map-new-york-city-using-map-function-in-r)
+```{r}
+## TODO: change to hidden path
+# solution: use API for zip file
+# nyc <- readOGR("/Users/irJERAD/Documents/Data-Apps/Interview-exercise/nyc-mv-collisions/data/nybbwi_17a", stringsAsFactors = FALSE)
+
+# change to data directory
+work <- getwd()
+setwd("data")
+
+# download and unzip shapefiles tp data frame
+url <- "http://www1.nyc.gov/assets/planning/download/zip/data-maps/open-data/nybb_17a.zip"
+zip_sdf <- basename(url)
+if (!file.exists(zip_sdf)) download.file(url, zip_sdf)
+# unzip into spacial data frame
+map_sdf <- unzip(zip_sdf)
+
+nyc_sdf <- readOGR(map_sdf[1], ogrListLayers(map_sdf[1])[1],
+                  stringsAsFactors = FALSE)
+# return to project's working directory
+setwd(work)
+
+nyc_map <- fortify(gSimplify(nyc_sdf, 0.05))
+
+gg <- ggplot()
+gg <- gg + geom_map(data = nyc_map, map = nyc_map,
+                    aes(x = long, y = lat, map_id = id),
+                    color = "black", fill = "white", size = 0.25)
+gg <- gg + coord_equal() 
+#gg <- gg + theme_map()
+gg
+```
 
