@@ -40,13 +40,15 @@ Briefly:
 ### Load Libraries
 
 Libraries that will be used during exploration
-```{r libraries, warning=FALSE}
+```{r libraries, warning=FALSE, message=FALSE}
 library(magrittr)
 library(dplyr)
 library(ggplot2)
 library(plotly)
 library(maps)
 library(rgeos)
+library(rgdal)
+library(ggthemes)
 Sys.setenv('MAPBOX_TOKEN' =
              'pk.eyJ1IjoiaXJqZXJhZCIsImEiOiJjajA4cWNkajkwMjRrMnFvNnlwMGFhZmM5In0.5PGU5SV2qdyix9tSEkjMgg')
 ```
@@ -81,18 +83,22 @@ Our Dataset structure revealed the variables and their classes `sapply(names(dt)
 
 ### Clean Data
 
-Change Unmarked Boroughs from NA to "NONE GIVEN"
+There are a lot of empty cells. To make sure we use a universal value for blank or Not Available we will assign the value NA to all blank cells
 ```{r}
-levels(dt$BOROUGH)[levels(dt$BOROUGH) == ""] <- "BOROUGH NA"
+dt[dt == ''] <- NA
 ```
 
 ### Map Variables  
 
 With Latitude and Longitude present and appearing to be fairly well documented, let's take a quick look at how these accidents look over an interactive world map (incase of mistakes outlying somewhere aside from New York). We will use the `BOROUGH` variable as a factor. This gives the geographic association of each borough and allows us early forsight into anything specific about our point of interest `BOURGH == "BROOKLYN"`
 ```{r map-vars, warning=FALSE}
-mp <- dt %>% plot_mapbox(lat = ~LATITUDE, lon = ~LONGITUDE, split = ~BOROUGH, mode = 'scattermapbox')
+mp <- dt %>%
+  plot_mapbox(lat = ~LATITUDE, lon = ~LONGITUDE,
+              split = ~BOROUGH, mode = 'scattermapbox')
+
 plotly_build(mp)
 ```
+
 Here we can see at least one marked as `BOROUGH == "QUEENS"` sitting on the equator at lat, long (0,0). It is safe to assume that observation along with others in the Atlantic or Pacific Ocean and anywhere else outside of New York have mislabeled coordinates.  
 These would be candidates for quick removal to save time, or cleaning if coordinate location was important enough on these observations to our intended results.  
 
@@ -192,7 +198,7 @@ naive bayes
 # create formula from vehicles 1 and 2 factors and code
 formula1.2 = BOROUGH ~ CONTRIBUTING.FACTOR.VEHICLE.1 + 
   CONTRIBUTING.FACTOR.VEHICLE.2 + VEHICLE.TYPE.CODE.1 + VEHICLE.TYPE.CODE.2
-b```
+```
 
 ## Graphical Exploration
 
@@ -260,10 +266,10 @@ Variable assets:
 -< Size = Number of accidents   
 -< Color grade = Damage of Accidents    
 
-### Map of Buroughs with ggplot PLotly
+### Map of Boroughs with ggplot PLotly
 
 TODO: Show method that downloads map data from NY Open Data [Here](http://stackoverflow.com/questions/32252505/how-to-map-new-york-city-using-map-function-in-r)
-```{r}
+```{r ggborough, warning=FALSE, message=FALSE}
 ## TODO: change to hidden path
 # solution: use API for zip file
 # nyc <- readOGR("/Users/irJERAD/Documents/Data-Apps/Interview-exercise/nyc-mv-collisions/data/nybbwi_17a", stringsAsFactors = FALSE)
@@ -291,7 +297,38 @@ gg <- gg + geom_map(data = nyc_map, map = nyc_map,
                     aes(x = long, y = lat, map_id = id),
                     color = "black", fill = "white", size = 0.25)
 gg <- gg + coord_equal() 
-#gg <- gg + theme_map()
+gg <- gg + theme_map()
 gg
+
+## TODO currently kills R session
+# ggplotly(gg)
+```
+
+```{r ggbrook}
+gbrook <- brooklyn %>% filter(LATITUDE < 45 & LATITUDE > 35 & LONGITUDE < -65 & LONGITUDE > -75)
+
+gg <- ggplot()
+gg <- gg + geom_map(data = nyc_map, map = nyc_map,
+                    aes(x = long, y = lat, map_id = id),
+                    color = "black", fill = "white", size = 0.25)
+
+
+```
+
+
+```{r, eval=FALSE}
+# ny <- dt %>%
+#  plot_mapbox(nyc_map, lat = ~LATITUDE, lon = ~LONGITUDE,
+#              split = ~BOROUGH, mode = 'scattermapbox') %>%
+#  layout(mapbox = list(zoom = 0, center = list(lat = ~median(LATITUDE),
+#                                     lon = ~median(LONGITUDE))))
+
+gds <- ds %>% filter(LATITUDE < 45 & LATITUDE > 35 & LONGITUDE < -65 & LONGITUDE > -75) %>% filter(complete.cases(.))
+
+ny <- gds %>%
+ plot_mapbox(nyc_map, lat = ~LATITUDE, lon = ~LONGITUDE,
+             split = ~BOROUGH, mode = 'scattermapbox')
+
+plotly_build(ny)
 ```
 
