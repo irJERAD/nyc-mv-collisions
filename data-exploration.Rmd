@@ -56,7 +56,7 @@ Sys.setenv('MAPBOX_TOKEN' =
 ### Load Data
 
 Load data from /data directory and into memory
-```{r import-data, cache=TRUE}
+```{r import-data, cache=TRUE, }
 dt <- read.csv(file = "data/NYPD_Motor_Vehicle_Collisions.csv")
 ```
 
@@ -79,13 +79,25 @@ summary(dt)
 
 ### Dataset Variables
 
-Our Dataset structure revealed the variables and their classes `sapply(names(dt), function(x) paste0(x, ' is class: ', class(dt[[x]])))`= `r sapply(names(dt), function(x) paste0('<br>','<b>',x,'</b>','<em>',' is class: ','</em>','<u>',class(dt[[x]]),'</u>'))`
+Our Dataset structure revealed the variables and their classes `sapply(names(dt), function(x) paste0(x, ' is class: ', class(dt[[x]])))` = `r sapply(names(dt), function(i) {paste0(i,' is class: ',class(dt[,][[i]]))})`
+
+`sapply(names(dt), function(x) paste0('<br>','<b>',x,'</b>','<em>',' is class: ','</em>','<u>',class(dt[[x]]),'</u>'))`
+
+The first thing to come to mind with such a factor heavy dataset is counting. Factors are not a hodgepodge collection of values, observed as they are pick up off the ground. Each Level of a factor - ideally - should have been intentionally designed. Ordered and distributed according to a purpose greater than the unit. Though not statically related as quantifiable assets, the levels in a factor are each related to one and other in addition to the group as a whole.
+
+
 
 ### Clean Data
 
-There are a lot of empty cells. To make sure we use a universal value for blank or Not Available we will assign the value NA to all blank cells
+There are a lot of empty cells. To make sure we use a universal value for blank or Not Available we will assign the value NA to all blank cells.
+While munging around with the data, add what could be a valuable variable created from two current variables. The `DATE` and `TIME` variables are set up as factors. This has interesting categorical value so they will stay in the data. Rather than replace the two rows, add a third one in a POSIX date form.   
 ```{r}
 dt[dt == ''] <- NA
+# create date.time column for time use
+#dt$date.time <- as.Date(dt$DATE, format("%m/%d/%Y"))
+
+# use hours & min in date.time var for calculations
+dt <- within(dt, {date.time = as.POSIXct(strptime(paste(DATE, TIME), "%m/%d/%Y %H:%M"))})
 ```
 
 ### Map Variables  
@@ -96,7 +108,7 @@ mp <- dt %>%
   plot_mapbox(lat = ~LATITUDE, lon = ~LONGITUDE,
               split = ~BOROUGH, mode = 'scattermapbox')
 
-plotly_build(mp)
+  plotly_build(mp)
 ```
 
 Here we can see at least one marked as `BOROUGH == "QUEENS"` sitting on the equator at lat, long (0,0). It is safe to assume that observation along with others in the Atlantic or Pacific Ocean and anywhere else outside of New York have mislabeled coordinates.  
@@ -200,11 +212,14 @@ formula1.2 = BOROUGH ~ CONTRIBUTING.FACTOR.VEHICLE.1 +
   CONTRIBUTING.FACTOR.VEHICLE.2 + VEHICLE.TYPE.CODE.1 + VEHICLE.TYPE.CODE.2
 ```
 
-## Graphical Exploration
+## Graphical Exploration of Set    
 
-### Events per Borough
 
-Start with a quick look at total events for each borough:
+### Split by Borough    
+
+#### Bar Chart    
+
+Start with a quick look at total events for each borough:   
 ```{r hour-bar}
 # create table with count of borough occurence
 boroughCount <- dt %>% group_by(BOROUGH) %>% tally(sort = TRUE)
@@ -220,25 +235,72 @@ subplot(bCNT, NObCNT)
 After removing the unmarked borough level "NONE GIVEN" we can see that Brooklyn has the greatest number of observed events in this dataset.  
 
 Does that make Brooklyn the most dangerous place to drive? Most leathal?  
-Things to consider:  
-- Size of Brooklyn (area and total length of roads)  
-- Number of drivers in Brooklyn (perhaps driving is more popular there than Manhattan)  
-- Average driver profile (professional Cab drivers in the city have different accident distributions than family drivers in Brooklyn)  
-c
-### Time of Day  
+Things to consider:   
 
-Create a Bar chart for Accidents across hours of the day.  
-Modification to consider:  
-group by:  
-- Borough  
-- Contributing Factor  
-Scale by:  
-- Number of fatalities  
-- Number of injuries  
+- Size of Brooklyn (area and total length of roads)   
+- Number of drivers in Brooklyn (perhaps driving is more popular there than Manhattan)     
+- Average driver profile (professional Cab drivers in the city have different accident distributions than family drivers in Brooklyn)    
 
-### Chotorpeth
+## Brooklyn a Visual Exploration    
 
-```{r}
+### Time of Day   
+
+#### Bar Chart
+Create a Bar chart for Accidents across hours of the day.   
+Modification to consider:   
+group by:   
+
+- Borough   
+- Contributing Factor   
+Scale by:   
+- Number of fatalities    
+- Number of injuries    
+
+#### BK Heatmap    
+
+##### Day of the week across hour of the day   
+
+With time being an essential part of this graphical exploration, start by identifying and removing observations that do not have the appropriate time data.   
+```{r bk-hourday}
+## Create a data frame then table of hour, day of week, and event count ##
+
+# remove all observations with an NA for date.time
+BKt <- brooklyn %>% filter(!is.na(date.time))
+
+# get time, rounded to nearest hour, strip rest away for values: 0 - 23
+BKx <- strftime(round(BKt$date.time, 'hours'), "%H")
+# perhaps rounding the hour removes the which "hour" are we in aspect
+# and only gives us, 'what is the closest hour'
+BKx2 <- strftime(BKt$date.time, "%H")
+
+# Rounding on Weekdays does not make sense.
+BKy <- weekdays.POSIXt(BKt$date.time)
+
+hotBK <- data.frame(BKx2, BKy)
+
+# create frequency table of hours and wdays from hotBK with count()
+BKfreq <- count(hotBK, BKx2, BKy)
+
+gg <- ggplot(BKfreq, aes(x = BKx2, y = BKy, fill = n))
+gg <- gg + geom_tile(color = "white", size = 0.1)
+
+## UI ## TODO option = "A", "B", "C", "D" to change through 4 color palettes
+gg <- gg + scale_fill_viridis(name = "# of Accidents", option = "C")
+gg <- gg + labs(x = "Hour of the Day 00:00 _\\/_ 23:00 ",
+                y = "Day of the Week",
+                title = "Folding Time")
+
+ggplotly(gg)
+# try using the entire subset and building from there by grouping
+# this will give access to other values and allow interactive chart building
+#heat <- hotBK %>% group_by(x2,y) %>% tally(sort = TRUE)
+
+```
+
+
+### Chotorpeth    
+
+```{r plotly-chloroMap}
 # map pojection / options
 g <- list(
   scope = 'New York NY',
@@ -250,25 +312,85 @@ g <- list(
   # countrywidth = 1,
   # subunitcolor = toRGB("white"),
   # countrycolor = toRGB("white")
-)
+  )
 
 pMap <- plot_geo(dt)
 ```
+
 map_data("world", "canada") %>%   
 ..group_by(group) %>%   
 ..plot_geo(x = ~long, y = ~lat) %>%   
 ..add_markers(size = I(1))    
 
-### 
+## Predictive Variables   
 
-Variable assets:    
--< Location = On Street + Cross Street    
--< Size = Number of accidents   
--< Color grade = Damage of Accidents    
+It is easy to argue why these variables could not predict an accident, as in one that has not occured. The primary goal of this analysis is to reduce accidents in Brooklyn by providing the results to a city council member.   
+Predictive or not. There are definitely relationships across observed values and variable states. Finding a relationship betweem a group of or even single variable and the outcome we are seeking to change. In order to change something - particularly something that has not happened -, it must be understood. it would seem, true, deep and profound change can only come through intimate understanding.    
 
-### Map of Boroughs with ggplot PLotly
 
-TODO: Show method that downloads map data from NY Open Data [Here](http://stackoverflow.com/questions/32252505/how-to-map-new-york-city-using-map-function-in-r)
+### Thinking on Variables
+
+To get the most out of limited presentation time, finite deliverable capacity, most immediately and perhaps most significant to minimize research and development time while maximizing relative output value.   
+If an infinite amount of time was spent incrementally refining work for incrementally smaller returns (_but returns none-the-less_), or a lack of respect for a singular deliverable presented in a timely manner to allow the greatest value from the analysis to be harvested when the analyst spends too much time in the beginning letting scope go out and window and finding themselves spending the 3rd quarter of their time procrastinating only to compound on those impossible last weeks with all-nighter after all-nighter until.... _too much anxiety even recounting those stories_    
+
+**Variable assets:**
+
+- Location = On Street + Cross Street    
+    + Using Street and Cross Street provides google street view as well as gives a definitive location to better understand context when looking out for potential weather issues, traffic signs or other items of interest that would not be in the data set already   
+- Number of incidents = continuous [size, gradient / "temperature" of a color]    
+- Color grade = Damage of Accidents = continuous by nature but would still work placed in groups   
+    + A simple "Damage" equation such as Damage = a#injured + b#killed + c#cars + dlocation   
+        + where a, b, c, d, are scalars with some easy assumptions such as b > a (implying that deaths are more "damage" than injuries when averaged out on a unit basis)    
+        + _Location_ - could be weighted by burough using average sqft cost when buying a home   
+
+
+#### Vehicle Split Bar Chart    
+
+Ideas:    
+* Bars across time and up by event count. Split each bar into 1 or the 4 or 5 most popular cars and have a final category for "rest"   
+
+Across:   
+
+* Date - datetime
+* Time - hour of day, day of week, day of year, day of month, month of year
+    + WEIRD _Hour of Month_ or _Hour of Year_ (_.. ..**Half year?**_)   
+    
+Up: (_Y-axis_)    
+
+* Numer of Events (how many rows or observations have that x-value)
+* Number of Injuries / Death / "damage" / "cost" to city
+    + "damage" equation mentioned earlier as well
+        + "damages" = a#injuries + b#deaths + c#vehicles + dLocation + ¿...?
+
+#### Set Heatmap    
+
+#####Day of the week across hour of the day   
+
+```{r set-hourday}
+# get time, rounded to nearest hour, strip rest away for values: 0 - 23
+x <- strftime(round(dt$date.time, 'hours'), "%H")
+# perhaps rounding the hour removes the which "hour" are we in aspect
+# and only gives us, 'what is the closest hour'
+x2 <- strftime(dt$date.time, "%H")
+
+# Rounding on Weekdays does not make sense.
+y <- weekdays.POSIXt(dt$date.time)
+
+hotdt <- data.frame(x2, y)
+
+heat <- dt %>% group_by()
+```
+
+
+
+--- ### --- ### --- ### ---
+## WIP ##
+
+### Map of Boroughs with ggplot PLotly    
+
+TODO: Show method that downloads map data from NY Open Data    [Here](http://stackoverflow.com/questions/32252505/how-to-map-new-york-city-using-map-function-in-r)    
+
+
 ```{r ggborough, warning=FALSE, message=FALSE}
 ## TODO: change to hidden path
 # solution: use API for zip file
@@ -291,7 +413,10 @@ nyc_sdf <- readOGR(map_sdf[1], ogrListLayers(map_sdf[1])[1],
 setwd(work)
 
 nyc_map <- fortify(gSimplify(nyc_sdf, 0.05))
+```
 
+
+```{r nyc-map}
 gg <- ggplot()
 gg <- gg + geom_map(data = nyc_map, map = nyc_map,
                     aes(x = long, y = lat, map_id = id),
@@ -304,17 +429,6 @@ gg
 # ggplotly(gg)
 ```
 
-```{r ggbrook}
-gbrook <- brooklyn %>% filter(LATITUDE < 45 & LATITUDE > 35 & LONGITUDE < -65 & LONGITUDE > -75)
-
-gg <- ggplot()
-gg <- gg + geom_map(data = nyc_map, map = nyc_map,
-                    aes(x = long, y = lat, map_id = id),
-                    color = "black", fill = "white", size = 0.25)
-
-
-```
-
 
 ```{r, eval=FALSE}
 # ny <- dt %>%
@@ -323,12 +437,44 @@ gg <- gg + geom_map(data = nyc_map, map = nyc_map,
 #  layout(mapbox = list(zoom = 0, center = list(lat = ~median(LATITUDE),
 #                                     lon = ~median(LONGITUDE))))
 
-gds <- ds %>% filter(LATITUDE < 45 & LATITUDE > 35 & LONGITUDE < -65 & LONGITUDE > -75) %>% filter(complete.cases(.))
+gds <- ds %>%
+  filter(LATITUDE < 45 & LATITUDE > 35 & LONGITUDE < -65 & LONGITUDE > -75)
+
+q <- qplot(x = gds$LONGITUDE, y = gds$LATITUDE) + tooltip
 
 ny <- gds %>%
  plot_mapbox(nyc_map, lat = ~LATITUDE, lon = ~LONGITUDE,
              split = ~BOROUGH, mode = 'scattermapbox')
 
 plotly_build(ny)
+```
+
+
+## Insight Visuals  
+
+
+### Mapping Brooklyn  
+
+
+Looking at the map of all events with location data, it is clear that there are some errors here. Either a (0,0) location in the Atlantic on the equator or, thanks to the color factoring by Borough, a Brooklyn colored dot sounded by Queens colored dots and far from it's zone is easy to spot.
+
+We cannot spot all of these however. Finding the Max and Min values for Latitude and Longitude is a rough method open for many missed pieces but after a visual inspection, we can be confident that no important location assets will be lost in this method.
+
+First we will create a subset of the Brooklyn data set (which came from `dt` the main dataset filtered by borough being Brooklyn as such: `brooklyn <- filter(dt, BOROUGH == "BROOKLYN")`))
+Using a tool such as LatLong.net's [Convert Lat and Long to Address](http://www.latlong.net/Show-Latitude-Longitude.html) and using the previously created Plotly graph. It was quick to find Brooklyn Data set boundries.  
+Max Lat is 40.738853. Which eliminated 3 points: one in Manhattan, one in Queens and one in Long Island.  
+Min Lat is 40.57152. This will remove the 3 equator values in the Brooklyn data.  
+In addition to NA values there were also blank cells in the dataset. Starting by marking blank as NA then removing NA will reduce the size of the set our filtering needs to traverse for a faster overall compute time.  
+_NOTE: the filtering could be changed to a faster method but has remained here for ease of reading and use by others_  
+Blank cells was taken care of in the main data frame prior to creating the Brooklyn subset so now there are only NA values. Filtering should take care of those leaving no need for another function.
+```{r create-geoBK}
+# subset brooklyn data to onservations suitable for geo maps with Lat and Long
+geoBK <- brooklyn %>%
+  filter(LATITUDE <= 40.738853 & LATITUDE >= 40.57152) %>%
+  filter(LONGITUDE <= -73.85646)
+```
+
+```{r map-geoBK}
+
 ```
 
