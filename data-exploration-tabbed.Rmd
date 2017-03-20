@@ -1,0 +1,678 @@
+---
+title: "NYC Open Data Exploration"
+output:
+  html_document:
+    theme: flatly
+    # toc: yes
+    # toc_depth: 5
+  html_notebook: default
+---
+
+# About{.tabset}    
+
+This notebook explores the more recent data from NYC Open Data [Data Set](https://data.cityofnewyork.us/Public-Safety/NYPD-Motor-Vehicle-Collisions/h9gi-nx95).
+
+This dataset can also be reached and interacted with through its [Google BigQuery location](https://bigquery.cloud.google.com/table/bigquery-public-data:new_york.nypd_mv_collisions?tab=schema)
+
+Try a different version: [handout page](http://jerad.xyz/projects/NYC-Collision-Data-Exploration-in-R.html), [Tab Navigation](http://jerad.xyz/projects/flatly-float.html)  
+
+## 1 Exercise Overview{.tabset}        
+### 1.1 Purpose    
+_Reduce Car Accidents in Brooklyn_
+
+For this exercise, we'd like you to analyze data on New York motor vehicle collisions and answer the following question:    
+**What are your ideas for reducing accidents in Brooklyn?**   
+Imagine you are preparing this presentation for the city council who will use it to inform new legislation and/or projects.
+
+### 1.2 TODO
+
+Briefly:  
+
+1. Inspect dataset  
+2. Identify dependent / outcome variables  
+3. iterate over:  
+    a. hypothesize predictor variables  
+    b. test  
+    c. document & consider results  
+  
+      
+- Setup   
+    + [ ] Libraries (_continual_)  
+    + [x] data  
+- Understand
+    + [x] structure  
+    + [x] summary  
+    + [ ] identify dependent variables  
+
+## 2 Setup{.tabset}    
+
+### 2.1 Load Libraries
+
+Libraries that will be used during exploration
+```{r libraries, warning=FALSE, message=FALSE}
+library(magrittr)
+library(dplyr)
+library(ggplot2)
+library(viridis)
+library(plotly)
+library(maps)
+library(rgeos)
+library(rgdal)
+library(ggthemes)
+library(crosstalk)
+library(leaflet)
+library(d3scatter)
+library(d3heatmap)
+library(rnoaa)
+#library(ggmap)
+```
+
+### 2.2 Create Environment
+
+Collect API tokens in Environment Variables (purposefully kept hidden here). Tokens and keys used include Google Maps API key (get one [here](https://developers.google.com/maps/documentation/javascript/get-api-key), Mapbox Access Token(get one [here](https://www.mapbox.com/developers/)) and an NCDC token ([here](https://www.ncdc.noaa.gov/cdo-web/token)) for NOAA weather data.  
+```{r Sys-env, include=FALSE}
+Sys.setenv('MAPBOX_TOKEN' =
+             'pk.eyJ1IjoiaXJqZXJhZCIsImEiOiJjajA4cWNkajkwMjRrMnFvNnlwMGFhZmM5In0.5PGU5SV2qdyix9tSEkjMgg')
+Sys.setenv('GMAP_API_KEY' = 'AIzaSyBtRVfE2LEbjcbFUBVNr3SxtIS_Xm6l8V0')
+Sys.setenv(NOAA_KEY = 'RcvzdyWTwTiJriYNXFwUNWDrKUHsWkhc')
+knitr::opts_chunk$set(fig.width = 8, fig.height = 6, fig.path = 'Figs/',
+                      warning = FALSE, message = FALSE)
+```
+
+
+### 2.3 Load Data
+
+Load data from /data directory and into memory
+```{r import-data, cache=TRUE}
+dt <- read.csv(file = "data/NYPD_Motor_Vehicle_Collisions.csv")
+```
+
+## 3 Undertand Dataset{.tabset}    
+
+### 3.1 Dataset Structure
+
+Inspect structure of dataset with the `str()` command:
+```{r data-structure}
+str(dt)
+```
+
+### 3.2 Dataset Summary
+
+Inspect summary of dataset with `summary()` command:
+```{r data-summary}
+summary(dt)
+```
+
+
+### 3.3 Dataset Variables
+```{r vars, echo=FALSE, eval=FALSE}
+variables <- sapply(names(dt), function(x) paste0('<br>','<b>',x,'</b>','<em>',' is class: ','</em>','<u>',class(dt[[x]]),'</u>'))
+```
+
+Our Dataset structure revealed the variables and their classes `sapply(names(dt), function(x) paste0(x, ' is class: ', class(dt[[x]])))`
+
+The first thing to come to mind with such a factor heavy dataset is counting. Factors are not a hodgepodge collection of values, observed as they are pick up off the ground. Each Level of a factor - ideally - should have been intentionally designed. Ordered and distributed according to a purpose greater than the unit. Though not statically related as quantifiable assets, the levels in a factor are each related to one and other in addition to the group as a whole.
+
+
+
+### 3.4 Clean Data
+
+There are a lot of empty cells. To make sure we use a universal value for blank or Not Available we will assign the value NA to all blank cells.
+While munging around with the data, add what could be a valuable variable created from two current variables. The `DATE` and `TIME` variables are set up as factors. This has interesting categorical value so they will stay in the data. Rather than replace the two rows, add a third one in a POSIX date form.   
+```{r clean}
+dt[dt == ''] <- NA
+# create date.time column for time use
+#dt$date.time <- as.Date(dt$DATE, format("%m/%d/%Y"))
+
+# use hours & min in date.time var for calculations
+dt <- within(dt, {date.time = as.POSIXct(strptime(paste(DATE, TIME), "%m/%d/%Y %H:%M"))})
+```
+
+### 3.5 Map Variables  
+
+With Latitude and Longitude present and appearing to be fairly well documented, let's take a quick look at how these accidents look over an interactive world map (incase of mistakes outlying somewhere aside from New York). We will use the `BOROUGH` variable as a factor. This gives the geographic association of each borough and allows us early forsight into anything specific about our point of interest `BOURGH == "BROOKLYN"`
+```{r map-vars, warning=FALSE}
+mp <- dt %>%
+  plot_mapbox(lat = ~LATITUDE, lon = ~LONGITUDE,
+              split = ~BOROUGH, mode = 'scattermapbox') %>%
+  layout(mapbox = list(zoom = 9,
+      center = list(lat = ~(40.7), lon = ~(-74.0))))
+
+  plotly_build(mp)
+```
+
+Here we can see at least one marked as `BOROUGH == "QUEENS"` sitting on the equator at lat, long (0,0). It is safe to assume that observation along with others in the Atlantic or Pacific Ocean and anywhere else outside of New York have mislabeled coordinates.  
+These would be candidates for quick removal to save time, or cleaning if coordinate location was important enough on these observations to our intended results.  
+
+```{r location-count}
+w <- dt[,5:6]
+locCNT <- w %>% group_by(LATITUDE,LONGITUDE) %>% tally(sort=TRUE)
+# frequency table for events by locations
+ww <- inner_join(w, locCNT, by=c("LATITUDE", "LONGITUDE"))
+```
+
+
+```{r ggmap, eval=FALSE}
+ny <- c(lon = -74, kat = 40.7)
+
+ny.map <- get_map(location = ny, zoom = 10, color = "bw")
+
+# map with gradient of accident event count
+ggmap(ny.map, extent = "panel", maprange = FALSE) +
+  geom_density2d(data = dt, aes(x = LONGITUDE, y = LATITUDE)) +
+  stat_density2d(data = ww, aes(x = LONGITUDE, y = LATITUDE, alpha = n, size = 0.01, bins = 16, geom = 'polygon')) +
+  scale_fill_gradient(low = "green", high = "red") +
+  scale_alpha(range(c(0.00, 0.25), guide = FALSE)) +
+  theme(legend.position = "none", axis.title = element_blank(), text = element_text(size = 12))
+  
+```
+
+
+### 3.6 Understanding Conclusion  
+
+With a goal of _reducing accidents in Brooklyn_ our main goal is to reduce observations of accidents where `BOROUGH == "BROOKLYN"`.  
+
+#### Proposed Solutions:  
+
+- Explore facets of variables  
+    + Datetime  
+        + Time of day  
+        + Day of week
+        + Day of month
+        + Day or Month of year
+- Explore trends `group_by`  
+    + Across time  
+    + Across space
+        + Burrough
+        + Zip
+        + Street Name (On, Cross, Off)
+    + Across Vehicle Type
+
+
+**1. Subset:**
+If we look at the subset of the dataset where BOROUGH is "BROOKLYN" `brooklyn <- filter(dt, BOROUGH == "BROOKLYN")` we want to find patterns in the existing observations and propose methods to eliminate these patterns.     
+
+- There are `length(levels(dt$BOROUGH))`: `r length(levels(dt$BOROUGH))` levels in the factor variable `BOROUGH`  
+- Including `levels(dt$BOROUGH)`: `r levels(dt$BOROUGH)`.  
+- So we really have 5 defined Boroughs, Brooklyn being one of which, with the 6th being an `NA` or blank value.  
+- Subsetting to Brooklyn gives us 223552 observations, reducing set of observations by over 75%  
+
+- Explore facets of variables  
+    + Datetime  
+        + Time of day  
+        + Day of week
+        + Day of month
+        + Day or Month of year
+- Explore trends  
+    + Across time
+
+**2. Other Success (_over time_):**
+Look for reductions in other burroughs over time and propose similar efforts.
+
+
+
+## 4 Exploration{.tabset}    
+
+### 4.1 Subset to Brooklyn
+
+Create subset of Brooklyn observations:
+```{r filter-brooklyn}
+brooklyn <- filter(dt, BOROUGH == "BROOKLYN")
+```
+
+### 4.2 Look at CONTRIBUTING.FACTOR.*
+
+```{r fact-1}
+fact.1 <- brooklyn %>%
+  group_by(CONTRIBUTING.FACTOR.VEHICLE.1) %>%
+  tally(sort = TRUE)
+fact.1
+```
+
+Only 3 factor levels appear over 10,000 times in the `brooklyn$CONTRIBUTING.FACTOR.VEHICLE.1` variable.  
+
+
+#### Distribution of CONTRIBUTING.FACTOR.VEHICLE.1    
+
+Explore quantile distribution of `brooklyn$CONTRIBUTING.FACTOR.VEHICLE.1` variable then use cumulative distribution to calculate the probability / percentage of factor levels below 10,000 and 5,000:  
+```{r fact-dist}
+quantile(fact.1$n)
+ecdf(fact.1$n)(10000)
+ecdf(fact.1$n)(5000)
+```
+
+An expected majority of `ecdf(fact.1$n)(10000)` = `r ecdf(fact.1$n)(10000) * 100`% are below 10,000 occurances.  
+Of interest is still nearly 90% below 5,000 which also provides us double the defined contributing factors (since the largest observation is listed as "Unspecified")  
+
+## 5 Regression Analysis{.tabset}      
+
+Searching for important variables.  
+Mix multiple logical combinations of regressor variables against predictor variables of interest.  
+
+### 5.1 Predict BOROUGH  
+
+Attemp to create a linear model trained to predict the BOROUGH location of an observation:  
+```{r}
+model1formula <- BOROUGH ~ DATE + TIME + CONTRIBUTING.FACTOR.VEHICLE.1
+## Breaks R Session - dt is almost 1M observations Too Much
+# mod1 <- lm(model1formula, data = dt)
+```
+
+naive bayes
+```{r bayes12}
+# create formula from vehicles 1 and 2 factors and code
+formula1.2 = BOROUGH ~ CONTRIBUTING.FACTOR.VEHICLE.1 + 
+  CONTRIBUTING.FACTOR.VEHICLE.2 + VEHICLE.TYPE.CODE.1 + VEHICLE.TYPE.CODE.2
+```
+
+## 6 Graphical Exploration of Set{.tabset}        
+
+
+### 6.1 Split by Borough    
+
+#### Bar Chart    
+
+Start with a quick look at total events for each borough:   
+```{r hour-bar}
+# create table with count of borough occurence
+boroughCount <- dt %>% group_by(BOROUGH) %>% tally(sort = TRUE)
+
+# plot bar chart of each Borough's event count
+NObCNT <- plot_ly(boroughCount[2:6,], x = ~BOROUGH, y = ~n, type = 'bar',
+                  marker = list(color = c('rgba(222,45,38,0.8)', 
+                                          'rgba(204,204,204,1)',            
+                                          'rgba(204,204,204,1)',
+                                          'rgba(204,204,204,1)',
+                                          'rgba(204,204,204,1)'))) %>%
+  layout(title = "Accident Count by Borough from July 2012 through March 2017",
+         xaxis = list(title = "Borough"),
+         yaxis = list(title = "Number of Accidents")) %>%
+  add_annotations(text = c("224k Accidents","190k Accidents",
+                           "188k Accidents","95k Accidents","34k Accidents"))
+
+# plot side-by-side
+NObCNT
+```
+After removing the unmarked borough level "NONE GIVEN" we can see that Brooklyn has the greatest number of observed events in this dataset.  
+
+Does that make Brooklyn the most dangerous place to drive? Most leathal?  
+Things to consider:   
+
+- Size of Brooklyn (area and total length of roads)   
+- Number of drivers in Brooklyn (perhaps driving is more popular there than Manhattan)     
+- Average driver profile (professional Cab drivers in the city have different accident distributions than family drivers in Brooklyn)    
+
+## 7 Brooklyn a Visual Exploration{.tabset}        
+
+### 7.1 Time of Day   
+
+#### Bar Chart
+Create a Bar chart for Accidents across hours of the day.   
+Modification to consider:   
+group by:   
+
+- Borough   
+- Contributing Factor   
+Scale by:   
+- Number of fatalities    
+- Number of injuries    
+
+#### BK Heatmap    
+
+##### Day of the week across hour of the day   
+
+With time being an essential part of this graphical exploration, start by identifying and removing observations that do not have the appropriate time data.   
+```{r bk-hourday}
+## Create a data frame then table of hour, day of week, and event count ##
+
+# remove all observations with an NA for date.time
+BKt <- brooklyn %>% filter(!is.na(date.time))
+
+# get time, rounded to nearest hour, strip rest away for values: 0 - 23
+BKx <- strftime(round(BKt$date.time, 'hours'), "%H")
+# perhaps rounding the hour removes the which "hour" are we in aspect
+# and only gives us, 'what is the closest hour'
+BKx2 <- strftime(BKt$date.time, "%H")
+
+# Rounding on Weekdays does not make sense.
+BKy <- weekdays.POSIXt(BKt$date.time)
+
+hotBK <- data.frame(BKx2, BKy)
+
+# create frequency table of hours and wdays from hotBK with count()
+BKfreq <- count(hotBK, BKx2, BKy)
+
+gg <- ggplot(BKfreq, aes(x = BKx2, y = BKy, fill = n))
+gg <- gg + geom_tile(color = "white", size = 0.1)
+
+## UI ## TODO option = "A", "B", "C", "D" to change through 4 color palettes
+gg <- gg + scale_fill_viridis(name = "# of Accidents", option = "C")
+gg <- gg + labs(x = "Hour of the Day 00:00 to 23:00 ",
+                y = "Day of the Week",
+                title = "Folding Time")
+
+ggplotly(gg)
+# try using the entire subset and building from there by grouping
+# this will give access to other values and allow interactive chart building
+#heat <- hotBK %>% group_by(x2,y) %>% tally(sort = TRUE)
+
+```
+
+
+### 7.2 Chotorpeth    
+
+```{r plotly-chloroMap}
+# map pojection / options
+g <- list(
+  scope = 'New York NY',
+  projection = list(type = 'albers usa'),
+  showland = TRUE,
+  landcolor = toRGB('gray85')
+  # ,
+  # subunitwidth = 1,
+  # countrywidth = 1,
+  # subunitcolor = toRGB("white"),
+  # countrycolor = toRGB("white")
+  )
+
+pMap <- plot_geo(dt)
+```
+
+map_data("world", "canada") %>%   
+..group_by(group) %>%   
+..plot_geo(x = ~long, y = ~lat) %>%   
+..add_markers(size = I(1))    
+
+## 8 Predictive Variables{.tabset}       
+
+It is easy to argue why these variables could not predict an accident, as in one that has not occured. The primary goal of this analysis is to reduce accidents in Brooklyn by providing the results to a city council member.   
+Predictive or not. There are definitely relationships across observed values and variable states. Finding a relationship betweem a group of or even single variable and the outcome we are seeking to change. In order to change something - particularly something that has not happened -, it must be understood. it would seem, true, deep and profound change can only come through intimate understanding.    
+
+
+### 8.1 Thinking on Variables
+
+To get the most out of limited presentation time, finite deliverable capacity, most immediately and perhaps most significant to minimize research and development time while maximizing relative output value.   
+If an infinite amount of time was spent incrementally refining work for incrementally smaller returns (_but returns none-the-less_), or a lack of respect for a singular deliverable presented in a timely manner to allow the greatest value from the analysis to be harvested when the analyst spends too much time in the beginning letting scope go out and window and finding themselves spending the 3rd quarter of their time procrastinating only to compound on those impossible last weeks with all-nighter after all-nighter until.... _too much anxiety even recounting those stories_    
+
+**Variable assets:**
+
+- Location = On Street + Cross Street    
+    + Using Street and Cross Street provides google street view as well as gives a definitive location to better understand context when looking out for potential weather issues, traffic signs or other items of interest that would not be in the data set already   
+- Number of incidents = continuous [size, gradient / "temperature" of a color]    
+- Color grade = Damage of Accidents = continuous by nature but would still work placed in groups   
+    + A simple "Damage" equation such as Damage = a#injured + b#killed + c#cars + dlocation   
+        + where a, b, c, d, are scalars with some easy assumptions such as b > a (implying that deaths are more "damage" than injuries when averaged out on a unit basis)    
+        + _Location_ - could be weighted by burough using average sqft cost when buying a home   
+
+### 8.2 New Variables   
+
+It is easy and tempting to stay inside a nice box of data - particularly after working with it for a while and feeling overly comfortable.    
+Conversly, half-hazardly throwing in as many variables as possible can lead to a consequence of overfitting amount other issues that will destort the results. A selection bias on behalf of the analyst happens when data that supports their existing trends is kept and unsuporting points are left out. In extreme cases, a complete loss of statistical significance can occure when so many options have been filtered through that a target like a p-value of 0.05 is inevitable in some random relationship.    
+Examples:   
+**Selection Bias:** if someone believes they only see good movies on the weekend, so they start saving their most anticipated flicks for the end of the week believing in some underlying phenomina, then they continue to select the pattern they are looking for. This biases the data towards that perceived pattern and is called a _selection bias_.    
+**Loss of Statistical Significance:** By taking 5 cards at random from decks of cards over an uncounted period of time, from an untracked set of decks, the results become completely meaningless. Attaining a Royal Flush may see special when it happens, but the statistical scarcity - the degree of which is often mistaken for skill or truth in such cases - has no merrit. There must be some larger system in which all data considered - whether or not it is used - exists in a singular system.    
+
+Weather exists in the same system as the dataset we are looking at. At a certain geography in a specific point in time, these location data points had weather attribtues that weren't collected with the accident information.
+Similarly, it is easy to draw logic between weather and an affect on vehicle collisions.
+
+#### Weather Data
+
+From Underground Weather - the web app used by WeatherData R package - these station IDs are published:
+* Brooklyn (KNYBROOK235)
+* Flushing (KNYQUEEN33)
+* Manhattan (KNYNEWYO651)
+* ICS, Bronx (KNYNEWYO692)
+* Staten Island = West Brighton (KNYNEWYO277)
+
+```{r weather-underground, eval=FALSE}
+# Underground weather API not responding to weatherData requests
+WeatherBK <- getWeatherForDate(station_id = 'KNY',
+                               start_date = "2013-07-01",
+                               end_date = "2016-03-05",
+                               opt_all_columns = TRUE
+                               )
+WeatherBK <- getWeatherForYear(station_id = 'KNY',
+                               year = 2016
+                               )
+```
+
+```{r noaa-snow}
+NYsnow1 <- ncdc(stationid = 'GHCND:USW00014732',
+                datasetid = 'GHCND',
+                datatypeid = 'SNOW',
+                startdate = '2012-07-01',
+                enddate = '2013-07-01',
+                token = 'RcvzdyWTwTiJriYNXFwUNWDrKUHsWkhc', limit = 370)
+
+NYsnow2 <- ncdc(stationid = 'GHCND:USW00014732',
+                datasetid = 'GHCND',
+                datatypeid = 'SNOW',
+                startdate = '2013-07-01',
+                enddate = '2014-07-01',
+                token = 'RcvzdyWTwTiJriYNXFwUNWDrKUHsWkhc', limit = 370)
+
+NYsnow3 <- ncdc(stationid = 'GHCND:USW00014732',
+                datasetid = 'GHCND',
+                datatypeid = 'SNOW',
+                startdate = '2014-07-01',
+                enddate = '2015-07-01',
+                token = 'RcvzdyWTwTiJriYNXFwUNWDrKUHsWkhc', limit = 370)
+
+NYsnow4 <- ncdc(stationid = 'GHCND:USW00014732',
+                datasetid = 'GHCND',
+                datatypeid = 'SNOW',
+                startdate = '2015-07-01',
+                enddate = '2016-07-01',
+                token = 'RcvzdyWTwTiJriYNXFwUNWDrKUHsWkhc', limit = 370)
+
+NYsnow5 <- ncdc(stationid = 'GHCND:USW00014732',
+                datasetid = 'GHCND',
+                datatypeid = 'SNOW',
+                startdate = '2016-07-01',
+                enddate = '2017-03-05',
+                token = 'RcvzdyWTwTiJriYNXFwUNWDrKUHsWkhc', limit = 370)
+
+nySNOW <- ncdc_combine(NYsnow1, NYsnow2, NYsnow3, NYsnow4, NYsnow5)
+
+nyWeather <- nySNOW$data
+```
+
+The rnoaa package returns ncdc data objects from weather data requests to the API. This can be a challenge to work with so the package also contains a function `ncdc_plot()` that returns a **ggplot** object for equick and easy visualization.
+
+The code below enhances this flow by placing the **ggplot** object in a **plotly** wrapper for converting **ggplot** objects into **plotly** htmlwidget graphs.    
+This method was used early on for checking and exploring the data when it first came in. However, while the primary goal is to uncover insights that will _assist local government in reducing traffic accidents in Brooklyn_, producing an interactive dashboard with widgets that enable visual exploration of the prepared data without code could be an indispensible tool for the intended stakeholders.   
+With a dashboard in mind and given there are multiple weather conditions of interest, the most robust container that can be used for interactive graphics on the web becomes a secondary objective after uncovering insights ( _insights that will guide how the data is prepared and what options are pruned down to on the dashboard_).
+
+The [Climate Data Online](https://www.ncdc.noaa.gov/cdo-web/webservices/v2) webservice has a [tool](https://www.ncdc.noaa.gov/cdo-web/search) to search for a dataset based on parameters such as observed  variables types, specific search terms, data range and location. [This toel](https://www.ncdc.noaa.gov/cdo-web/search) can be set to return a dataset to your email for ease of use and portability of data when off-line, for sharing or reproducibility. 
+```{r ncdc-plot}
+# plot ncdc data object (now extracting data to create single weather object)
+snoPLOT <- ncdc_plot(nySNOW)
+snp <- ggplotly(snoPLOT)
+subplot(snoPLOT,snp)
+```
+
+#### Merge Weather Data with Set
+
+The [National Centers for Environmental Information](https://www.ncei.noaa.gov) formally known as Nation Climate Data Center - **NCDC** maintains a[nother amazing acronym] the well organized and documented web service [Climate Data Online](https://www.ncdc.noaa.gov/cdo-web/webservices/v2) - **CDO**. Additionally there is a more human oriented service [National Oceanic and Atmospheric Administration](http://www.noaa.gov) on behalf of the U.S. Department of Commerse.
+
+Here I have identified the recorded and measured weather conditions which I believe will be informative for our purpose as well as the future purpose of stake holders using the dashboard when I am not longer available to them.
+```{r noaa-prcp}
+PRCP.1 <- ncdc(stationid = 'GHCND:USW00014732',
+                datasetid = 'GHCND',
+                datatypeid = 'PRCP',
+                startdate = '2012-07-01',
+                enddate = '2013-07-01',
+                token = 'RcvzdyWTwTiJriYNXFwUNWDrKUHsWkhc', limit = 370)
+
+PRCP.2 <- ncdc(stationid = 'GHCND:USW00014732',
+                datasetid = 'GHCND',
+                datatypeid = 'PRCP',
+                startdate = '2013-07-01',
+                enddate = '2014-07-01',
+                token = 'RcvzdyWTwTiJriYNXFwUNWDrKUHsWkhc', limit = 370)
+
+PRCP.3 <- ncdc(stationid = 'GHCND:USW00014732',
+                datasetid = 'GHCND',
+                datatypeid = 'PRCP',
+                startdate = '2014-07-01',
+                enddate = '2015-07-01',
+                token = 'RcvzdyWTwTiJriYNXFwUNWDrKUHsWkhc', limit = 370)
+
+PRCP.4 <- ncdc(stationid = 'GHCND:USW00014732',
+                datasetid = 'GHCND',
+                datatypeid = 'PRCP',
+                startdate = '2015-07-01',
+                enddate = '2016-07-01',
+                token = 'RcvzdyWTwTiJriYNXFwUNWDrKUHsWkhc', limit = 370)
+
+PRCP.5 <- ncdc(stationid = 'GHCND:USW00014732',
+                datasetid = 'GHCND',
+                datatypeid = 'PRCP',
+                startdate = '2016-07-01',
+                enddate = '2017-03-05',
+                token = 'RcvzdyWTwTiJriYNXFwUNWDrKUHsWkhc', limit = 370)
+
+nyPRCP <- ncdc_combine(PRCP.1, PRCP.2, PRCP.3, PRCP.4, PRCP.5)
+
+LnyWeather <- left_join(nyPRCP$data, nyWeather, by = "date")
+RnyWeather <- right_join(nyPRCP$data, nyWeather, by = "date")
+```
+
+## 9 Viewing{.tabset}        
+
+### 9.1 Visually Explore Dataset    
+
+#### Vehicle Split Bar Chart    
+
+Ideas:    
+* Bars across time and up by event count. Split each bar into 1 or the 4 or 5 most popular cars and have a final category for "rest"   
+
+Across:   
+
+* Date - datetime
+* Time - hour of day, day of week, day of year, day of month, month of year
+    + WEIRD _Hour of Month_ or _Hour of Year_ (_.. ..**Half year?**_)   
+    
+Up: (_Y-axis_)    
+
+* Numer of Events (how many rows or observations have that x-value)
+* Number of Injuries / Death / "damage" / "cost" to city
+    + "damage" equation mentioned earlier as well
+        + "damages" = a#injuries + b#deaths + c#vehicles + dLocation + ¿...?
+
+#### Set Heatmap    
+
+##### Hour of the Day Heatmap for NYC   
+
+```{r set-hourday}
+# get time, rounded to nearest hour, strip rest away for values: 0 - 23
+x <- strftime(round(dt$date.time, 'hours'), "%H")
+# perhaps rounding the hour removes the which "hour" are we in aspect
+# and only gives us, 'what is the closest hour'
+x2 <- strftime(dt$date.time, "%H")
+
+# Rounding on Weekdays does not make sense.
+y <- weekdays.POSIXt(dt$date.time)
+
+hotdt <- data.frame(x2, y)
+
+heat <- dt %>% group_by()
+```
+
+
+
+--- ### --- ### --- ### ---
+## WIP ##{.tabset}    
+**WORK IN PROGRESS AND ABONDON ATTEMPTS**
+### Map of Boroughs with ggplot PLotly    
+
+TODO: Show method that downloads map data from NY Open Data    [Here](http://stackoverflow.com/questions/32252505/how-to-map-new-york-city-using-map-function-in-r)    
+
+
+```{r ggborough, warning=FALSE, message=FALSE}
+## TODO: change to hidden path
+# solution: use API for zip file
+# nyc <- readOGR("/Users/irJERAD/Documents/Data-Apps/Interview-exercise/nyc-mv-collisions/data/nybbwi_17a", stringsAsFactors = FALSE)
+
+# change to data directory
+work <- getwd()
+setwd("data")
+
+# download and unzip shapefiles tp data frame
+url <- "http://www1.nyc.gov/assets/planning/download/zip/data-maps/open-data/nybb_17a.zip"
+zip_sdf <- basename(url)
+if (!file.exists(zip_sdf)) download.file(url, zip_sdf)
+# unzip into spacial data frame
+map_sdf <- unzip(zip_sdf)
+
+nyc_sdf <- readOGR(map_sdf[1], ogrListLayers(map_sdf[1])[1],
+                  stringsAsFactors = FALSE)
+# return to project's working directory
+setwd(work)
+
+nyc_map <- fortify(gSimplify(nyc_sdf, 0.05))
+```
+
+
+```{r nyc-map}
+gg <- ggplot()
+gg <- gg + geom_map(data = nyc_map, map = nyc_map,
+                    aes(x = long, y = lat, map_id = id),
+                    color = "black", fill = "white", size = 0.25)
+gg <- gg + coord_equal() 
+gg <- gg + theme_map()
+gg
+
+## TODO currently kills R session
+# ggplotly(gg)
+```
+
+
+```{r, eval=FALSE}
+# ny <- dt %>%
+#  plot_mapbox(nyc_map, lat = ~LATITUDE, lon = ~LONGITUDE,
+#              split = ~BOROUGH, mode = 'scattermapbox') %>%
+#  layout(mapbox = list(zoom = 0, center = list(lat = ~median(LATITUDE),
+#                                     lon = ~median(LONGITUDE))))
+
+gds <- ds %>%
+  filter(LATITUDE < 45 & LATITUDE > 35 & LONGITUDE < -65 & LONGITUDE > -75)
+
+q <- qplot(x = gds$LONGITUDE, y = gds$LATITUDE) + tooltip
+
+ny <- gds %>%
+ plot_mapbox(nyc_map, lat = ~LATITUDE, lon = ~LONGITUDE,
+             split = ~BOROUGH, mode = 'scattermapbox')
+
+plotly_build(ny)
+```
+
+
+## 10 Insight Visuals{.tabset}      
+
+
+### 10.1 Mapping Brooklyn  
+
+
+Looking at the map of all events with location data, it is clear that there are some errors here. Either a (0,0) location in the Atlantic on the equator or, thanks to the color factoring by Borough, a Brooklyn colored dot sounded by Queens colored dots and far from it's zone is easy to spot.
+
+We cannot spot all of these however. Finding the Max and Min values for Latitude and Longitude is a rough method open for many missed pieces but after a visual inspection, we can be confident that no important location assets will be lost in this method.
+
+First we will create a subset of the Brooklyn data set (which came from `dt` the main dataset filtered by borough being Brooklyn as such: `brooklyn <- filter(dt, BOROUGH == "BROOKLYN")`))
+Using a tool such as LatLong.net's [Convert Lat and Long to Address](http://www.latlong.net/Show-Latitude-Longitude.html) and using the previously created Plotly graph. It was quick to find Brooklyn Data set boundries.  
+Max Lat is 40.738853. Which eliminated 3 points: one in Manhattan, one in Queens and one in Long Island.  
+Min Lat is 40.57152. This will remove the 3 equator values in the Brooklyn data.  
+In addition to NA values there were also blank cells in the dataset. Starting by marking blank as NA then removing NA will reduce the size of the set our filtering needs to traverse for a faster overall compute time.  
+_NOTE: the filtering could be changed to a faster method but has remained here for ease of reading and use by others_  
+Blank cells was taken care of in the main data frame prior to creating the Brooklyn subset so now there are only NA values. Filtering should take care of those leaving no need for another function.
+```{r create-geoBK}
+# subset brooklyn data to onservations suitable for geo maps with Lat and Long
+geoBK <- brooklyn %>%
+  filter(LATITUDE <= 40.738853 & LATITUDE >= 40.57152) %>%
+  filter(LONGITUDE <= -73.85646)
+```
+
+```{r map-geoBK}
+
+```
+

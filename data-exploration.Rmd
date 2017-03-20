@@ -3,12 +3,13 @@ title: "NYC Open Data Exploration"
 output:
   html_document:
     theme: flatly
+    df_print: paged
     toc: yes
     toc_depth: 5
   html_notebook: default
 ---
 
-# About{.tabset}    
+# About    
 
 This notebook explores the more recent data from NYC Open Data [Data Set](https://data.cityofnewyork.us/Public-Safety/NYPD-Motor-Vehicle-Collisions/h9gi-nx95).
 
@@ -16,7 +17,7 @@ This dataset can also be reached and interacted with through its [Google BigQuer
 
 Try a different version: [handout page](http://jerad.xyz/projects/NYC-Collision-Data-Exploration-in-R.html), [Tab Navigation](http://jerad.xyz/projects/flatly-float.html)  
 
-## 1 Exercise Overview{.tabset}        
+## 1 Exercise Overview        
 ### 1.1 Purpose    
 _Reduce Car Accidents in Brooklyn_
 
@@ -44,7 +45,7 @@ Briefly:
     + [x] summary  
     + [ ] identify dependent variables  
 
-## 2 Setup{.tabset}    
+## 2 Setup    
 
 ### 2.1 Load Libraries
 
@@ -64,6 +65,7 @@ library(leaflet)
 library(d3scatter)
 library(d3heatmap)
 library(rnoaa)
+library(DT)
 #library(ggmap)
 ```
 
@@ -87,32 +89,33 @@ Load data from /data directory and into memory
 dt <- read.csv(file = "data/NYPD_Motor_Vehicle_Collisions.csv")
 ```
 
-## 3 Undertand Dataset{.tabset}    
+## 3 Undertand Dataset    
 
 ### 3.1 Dataset Structure
 
 Inspect structure of dataset with the `str()` command:
 ```{r data-structure}
-str(dt)
+datatable(str(dt))
 ```
 
 ### 3.2 Dataset Summary
 
 Inspect summary of dataset with `summary()` command:
 ```{r data-summary}
-summary(dt)
+datatable(summary(dt), colnames = c('Observed Variable' = 'Var2',
+                       "Quantitative Measures" = "Freq"))
 ```
 
 
 ### 3.3 Dataset Variables
-```{r vars, echo=FALSE, eval=FALSE}
-variables <- sapply(names(dt), function(x) paste0('<br>','<b>',x,'</b>','<em>',' is class: ','</em>','<u>',class(dt[[x]]),'</u>'))
+
+Our Dataset structure revealed the variables and their classes `sapply(names(dt), function(x) paste0(x, ' is class: ', class(dt[[x]])))` =    
+```{r vars, echo=FALSE, }
+variables <- sapply(names(dt), function(x) paste0(x,' is class: ',class(dt[[x]])))
+variables
 ```
 
-Our Dataset structure revealed the variables and their classes `sapply(names(dt), function(x) paste0(x, ' is class: ', class(dt[[x]])))`
-
 The first thing to come to mind with such a factor heavy dataset is counting. Factors are not a hodgepodge collection of values, observed as they are pick up off the ground. Each Level of a factor - ideally - should have been intentionally designed. Ordered and distributed according to a purpose greater than the unit. Though not statically related as quantifiable assets, the levels in a factor are each related to one and other in addition to the group as a whole.
-
 
 
 ### 3.4 Clean Data
@@ -211,7 +214,7 @@ Look for reductions in other burroughs over time and propose similar efforts.
 
 
 
-## 4 Exploration{.tabset}    
+## 4 Exploration    
 
 ### 4.1 Subset to Brooklyn
 
@@ -244,7 +247,7 @@ ecdf(fact.1$n)(5000)
 An expected majority of `ecdf(fact.1$n)(10000)` = `r ecdf(fact.1$n)(10000) * 100`% are below 10,000 occurances.  
 Of interest is still nearly 90% below 5,000 which also provides us double the defined contributing factors (since the largest observation is listed as "Unspecified")  
 
-## 5 Regression Analysis{.tabset}      
+## 5 Regression Analysis      
 
 Searching for important variables.  
 Mix multiple logical combinations of regressor variables against predictor variables of interest.  
@@ -265,7 +268,7 @@ formula1.2 = BOROUGH ~ CONTRIBUTING.FACTOR.VEHICLE.1 +
   CONTRIBUTING.FACTOR.VEHICLE.2 + VEHICLE.TYPE.CODE.1 + VEHICLE.TYPE.CODE.2
 ```
 
-## 6 Graphical Exploration of Set{.tabset}        
+## 6 Graphical Exploration of Set        
 
 
 ### 6.1 Split by Borough    
@@ -302,7 +305,7 @@ Things to consider:
 - Number of drivers in Brooklyn (perhaps driving is more popular there than Manhattan)     
 - Average driver profile (professional Cab drivers in the city have different accident distributions than family drivers in Brooklyn)    
 
-## 7 Brooklyn a Visual Exploration{.tabset}        
+## 7 Brooklyn a Visual Exploration        
 
 ### 7.1 Time of Day   
 
@@ -383,7 +386,7 @@ map_data("world", "canada") %>%
 ..plot_geo(x = ~long, y = ~lat) %>%   
 ..add_markers(size = I(1))    
 
-## 8 Predictive Variables{.tabset}       
+## 8 Predictive Variables       
 
 It is easy to argue why these variables could not predict an accident, as in one that has not occured. The primary goal of this analysis is to reduce accidents in Brooklyn by providing the results to a city council member.   
 Predictive or not. There are definitely relationships across observed values and variable states. Finding a relationship betweem a group of or even single variable and the outcome we are seeking to change. In order to change something - particularly something that has not happened -, it must be understood. it would seem, true, deep and profound change can only come through intimate understanding.    
@@ -415,7 +418,7 @@ Examples:
 Weather exists in the same system as the dataset we are looking at. At a certain geography in a specific point in time, these location data points had weather attribtues that weren't collected with the accident information.
 Similarly, it is easy to draw logic between weather and an affect on vehicle collisions.
 
-#### Weather Data
+#### Weather Data   
 
 From Underground Weather - the web app used by WeatherData R package - these station IDs are published:
 * Brooklyn (KNYBROOK235)
@@ -491,7 +494,7 @@ snp <- ggplotly(snoPLOT)
 subplot(snoPLOT,snp)
 ```
 
-#### Merge Weather Data with Set
+#### Merge Weather Data with Set    
 
 The [National Centers for Environmental Information](https://www.ncei.noaa.gov) formally known as Nation Climate Data Center - **NCDC** maintains a[nother amazing acronym] the well organized and documented web service [Climate Data Online](https://www.ncdc.noaa.gov/cdo-web/webservices/v2) - **CDO**. Additionally there is a more human oriented service [National Oceanic and Atmospheric Administration](http://www.noaa.gov) on behalf of the U.S. Department of Commerse.
 
@@ -538,7 +541,7 @@ LnyWeather <- left_join(nyPRCP$data, nyWeather, by = "date")
 RnyWeather <- right_join(nyPRCP$data, nyWeather, by = "date")
 ```
 
-## 9 Viewing{.tabset}        
+## 9 Viewing        
 
 ### 9.1 Visually Explore Dataset    
 
@@ -580,9 +583,9 @@ heat <- dt %>% group_by()
 ```
 
 
+---
 
---- ### --- ### --- ### ---
-## WIP ##{.tabset}    
+## Work In Progress & Abandoned Dead-ends{.tabset}    
 **WORK IN PROGRESS AND ABONDON ATTEMPTS**
 ### Map of Boroughs with ggplot PLotly    
 
