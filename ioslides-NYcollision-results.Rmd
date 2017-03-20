@@ -1,0 +1,51 @@
+---
+author: "Jerad Acosta"
+title: "Reducing Brooklyn Accidents with NYC Open Data"
+date: "March 2017"
+output:
+  ioslides_presentation:
+    css: slides.css
+    logo: images/ConnectwMe.png
+    self_contained: no
+    incremental: true
+---
+
+# Overview / Purpose?   
+
+## Goal
+
+**Reducing Accidents in Brooklyn**    
+
+The analysis for this deck and the accompanying [Data Exploration R Notebook](http://jerad.xyz/projects/flatly-float.html) and Dashboard was primarily generated from the NYC Open Data [Vehicle Collision Data Set](https://data.cityofnewyork.us/Public-Safety/NYPD-Motor-Vehicle-Collisions/h9gi-nx95).  
+
+### The important factors influencing this work include:
+
+- City Council Stake Holders
+    + Can leverage the greatest amount of influence through their careers in local law and policy   
+- Reduce Accidents in Brooklyn    
+- Understand The NYC Collosion Data   
+
+## R Markdown
+
+This is an R Markdown presentation. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document.
+
+## Slide with Bullets
+
+- Bullet 1
+- Bullet 2
+- Bullet 3
+
+## Slide with R Output
+
+```{r cars, echo = TRUE}
+summary(cars)
+```
+
+## Slide with Plot
+
+```{r pressure}
+plot(pressure)
+```
+

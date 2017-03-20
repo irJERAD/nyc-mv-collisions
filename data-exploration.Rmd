@@ -1,38 +1,30 @@
 ---
 title: "NYC Open Data Exploration"
 output:
-  # html_document:
-  #   theme: paper
-  #   toc: yes
-  #   toc_depth: 5
-  #   toc_float:
-  #     collapsed: yes
-  #     smooth_scroll: yes
   html_document:
-    theme: spacelab
+    theme: flatly
     toc: yes
     toc_depth: 5
-    toc_float:
-      collapsed: yes
-      smooth_scroll: yes
   html_notebook: default
 ---
 
-# About
+# About{.tabset}    
 
 This notebook explores the more recent data from NYC Open Data [Data Set](https://data.cityofnewyork.us/Public-Safety/NYPD-Motor-Vehicle-Collisions/h9gi-nx95).
 
 This dataset can also be reached and interacted with through its [Google BigQuery location](https://bigquery.cloud.google.com/table/bigquery-public-data:new_york.nypd_mv_collisions?tab=schema)
 
-## Exercise Overview    
-### Purpose    
+Try a different version: [handout page](http://jerad.xyz/projects/NYC-Collision-Data-Exploration-in-R.html), [Tab Navigation](http://jerad.xyz/projects/flatly-float.html)  
+
+## 1 Exercise Overview{.tabset}        
+### 1.1 Purpose    
 _Reduce Car Accidents in Brooklyn_
 
 For this exercise, we'd like you to analyze data on New York motor vehicle collisions and answer the following question:    
 **What are your ideas for reducing accidents in Brooklyn?**   
 Imagine you are preparing this presentation for the city council who will use it to inform new legislation and/or projects.
 
-### TODO
+### 1.2 TODO
 
 Briefly:  
 
@@ -52,9 +44,9 @@ Briefly:
     + [x] summary  
     + [ ] identify dependent variables  
 
-## Setup
+## 2 Setup{.tabset}    
 
-### Load Libraries
+### 2.1 Load Libraries
 
 Libraries that will be used during exploration
 ```{r libraries, warning=FALSE, message=FALSE}
@@ -72,9 +64,10 @@ library(leaflet)
 library(d3scatter)
 library(d3heatmap)
 library(rnoaa)
+#library(ggmap)
 ```
 
-### Create Environment
+### 2.2 Create Environment
 
 Collect API tokens in Environment Variables (purposefully kept hidden here). Tokens and keys used include Google Maps API key (get one [here](https://developers.google.com/maps/documentation/javascript/get-api-key), Mapbox Access Token(get one [here](https://www.mapbox.com/developers/)) and an NCDC token ([here](https://www.ncdc.noaa.gov/cdo-web/token)) for NOAA weather data.  
 ```{r Sys-env, include=FALSE}
@@ -87,23 +80,23 @@ knitr::opts_chunk$set(fig.width = 8, fig.height = 6, fig.path = 'Figs/',
 ```
 
 
-### Load Data
+### 2.3 Load Data
 
 Load data from /data directory and into memory
 ```{r import-data, cache=TRUE}
 dt <- read.csv(file = "data/NYPD_Motor_Vehicle_Collisions.csv")
 ```
 
-## Undertand Dataset
+## 3 Undertand Dataset{.tabset}    
 
-### Dataset Structure
+### 3.1 Dataset Structure
 
 Inspect structure of dataset with the `str()` command:
 ```{r data-structure}
 str(dt)
 ```
 
-### Dataset Summary
+### 3.2 Dataset Summary
 
 Inspect summary of dataset with `summary()` command:
 ```{r data-summary}
@@ -111,8 +104,8 @@ summary(dt)
 ```
 
 
-### Dataset Variables
-```{r, echo=FALSE}
+### 3.3 Dataset Variables
+```{r vars, echo=FALSE, eval=FALSE}
 variables <- sapply(names(dt), function(x) paste0('<br>','<b>',x,'</b>','<em>',' is class: ','</em>','<u>',class(dt[[x]]),'</u>'))
 ```
 
@@ -122,11 +115,11 @@ The first thing to come to mind with such a factor heavy dataset is counting. Fa
 
 
 
-### Clean Data
+### 3.4 Clean Data
 
 There are a lot of empty cells. To make sure we use a universal value for blank or Not Available we will assign the value NA to all blank cells.
 While munging around with the data, add what could be a valuable variable created from two current variables. The `DATE` and `TIME` variables are set up as factors. This has interesting categorical value so they will stay in the data. Rather than replace the two rows, add a third one in a POSIX date form.   
-```{r}
+```{r clean}
 dt[dt == ''] <- NA
 # create date.time column for time use
 #dt$date.time <- as.Date(dt$DATE, format("%m/%d/%Y"))
@@ -135,13 +128,15 @@ dt[dt == ''] <- NA
 dt <- within(dt, {date.time = as.POSIXct(strptime(paste(DATE, TIME), "%m/%d/%Y %H:%M"))})
 ```
 
-### Map Variables  
+### 3.5 Map Variables  
 
 With Latitude and Longitude present and appearing to be fairly well documented, let's take a quick look at how these accidents look over an interactive world map (incase of mistakes outlying somewhere aside from New York). We will use the `BOROUGH` variable as a factor. This gives the geographic association of each borough and allows us early forsight into anything specific about our point of interest `BOURGH == "BROOKLYN"`
 ```{r map-vars, warning=FALSE}
 mp <- dt %>%
   plot_mapbox(lat = ~LATITUDE, lon = ~LONGITUDE,
-              split = ~BOROUGH, mode = 'scattermapbox')
+              split = ~BOROUGH, mode = 'scattermapbox') %>%
+  layout(mapbox = list(zoom = 9,
+      center = list(lat = ~(40.7), lon = ~(-74.0))))
 
   plotly_build(mp)
 ```
@@ -149,8 +144,31 @@ mp <- dt %>%
 Here we can see at least one marked as `BOROUGH == "QUEENS"` sitting on the equator at lat, long (0,0). It is safe to assume that observation along with others in the Atlantic or Pacific Ocean and anywhere else outside of New York have mislabeled coordinates.  
 These would be candidates for quick removal to save time, or cleaning if coordinate location was important enough on these observations to our intended results.  
 
+```{r location-count}
+w <- dt[,5:6]
+locCNT <- w %>% group_by(LATITUDE,LONGITUDE) %>% tally(sort=TRUE)
+# frequency table for events by locations
+ww <- inner_join(w, locCNT, by=c("LATITUDE", "LONGITUDE"))
+```
 
-### Understanding Conclusion  
+
+```{r ggmap, eval=FALSE}
+ny <- c(lon = -74, kat = 40.7)
+
+ny.map <- get_map(location = ny, zoom = 10, color = "bw")
+
+# map with gradient of accident event count
+ggmap(ny.map, extent = "panel", maprange = FALSE) +
+  geom_density2d(data = dt, aes(x = LONGITUDE, y = LATITUDE)) +
+  stat_density2d(data = ww, aes(x = LONGITUDE, y = LATITUDE, alpha = n, size = 0.01, bins = 16, geom = 'polygon')) +
+  scale_fill_gradient(low = "green", high = "red") +
+  scale_alpha(range(c(0.00, 0.25), guide = FALSE)) +
+  theme(legend.position = "none", axis.title = element_blank(), text = element_text(size = 12))
+  
+```
+
+
+### 3.6 Understanding Conclusion  
 
 With a goal of _reducing accidents in Brooklyn_ our main goal is to reduce observations of accidents where `BOROUGH == "BROOKLYN"`.  
 
@@ -193,16 +211,16 @@ Look for reductions in other burroughs over time and propose similar efforts.
 
 
 
-## Exploration
+## 4 Exploration{.tabset}    
 
-### Subset to Brooklyn
+### 4.1 Subset to Brooklyn
 
 Create subset of Brooklyn observations:
 ```{r filter-brooklyn}
 brooklyn <- filter(dt, BOROUGH == "BROOKLYN")
 ```
 
-### Look at CONTRIBUTING.FACTOR.*
+### 4.2 Look at CONTRIBUTING.FACTOR.*
 
 ```{r fact-1}
 fact.1 <- brooklyn %>%
@@ -226,12 +244,12 @@ ecdf(fact.1$n)(5000)
 An expected majority of `ecdf(fact.1$n)(10000)` = `r ecdf(fact.1$n)(10000) * 100`% are below 10,000 occurances.  
 Of interest is still nearly 90% below 5,000 which also provides us double the defined contributing factors (since the largest observation is listed as "Unspecified")  
 
-## Regression Analysis  
+## 5 Regression Analysis{.tabset}      
 
 Searching for important variables.  
 Mix multiple logical combinations of regressor variables against predictor variables of interest.  
 
-### Predict BOROUGH  
+### 5.1 Predict BOROUGH  
 
 Attemp to create a linear model trained to predict the BOROUGH location of an observation:  
 ```{r}
@@ -247,10 +265,10 @@ formula1.2 = BOROUGH ~ CONTRIBUTING.FACTOR.VEHICLE.1 +
   CONTRIBUTING.FACTOR.VEHICLE.2 + VEHICLE.TYPE.CODE.1 + VEHICLE.TYPE.CODE.2
 ```
 
-## Graphical Exploration of Set    
+## 6 Graphical Exploration of Set{.tabset}        
 
 
-### Split by Borough    
+### 6.1 Split by Borough    
 
 #### Bar Chart    
 
@@ -284,9 +302,9 @@ Things to consider:
 - Number of drivers in Brooklyn (perhaps driving is more popular there than Manhattan)     
 - Average driver profile (professional Cab drivers in the city have different accident distributions than family drivers in Brooklyn)    
 
-## Brooklyn a Visual Exploration    
+## 7 Brooklyn a Visual Exploration{.tabset}        
 
-### Time of Day   
+### 7.1 Time of Day   
 
 #### Bar Chart
 Create a Bar chart for Accidents across hours of the day.   
@@ -341,7 +359,7 @@ ggplotly(gg)
 ```
 
 
-### Chotorpeth    
+### 7.2 Chotorpeth    
 
 ```{r plotly-chloroMap}
 # map pojection / options
@@ -365,13 +383,13 @@ map_data("world", "canada") %>%
 ..plot_geo(x = ~long, y = ~lat) %>%   
 ..add_markers(size = I(1))    
 
-## Predictive Variables   
+## 8 Predictive Variables{.tabset}       
 
 It is easy to argue why these variables could not predict an accident, as in one that has not occured. The primary goal of this analysis is to reduce accidents in Brooklyn by providing the results to a city council member.   
 Predictive or not. There are definitely relationships across observed values and variable states. Finding a relationship betweem a group of or even single variable and the outcome we are seeking to change. In order to change something - particularly something that has not happened -, it must be understood. it would seem, true, deep and profound change can only come through intimate understanding.    
 
 
-### Thinking on Variables
+### 8.1 Thinking on Variables
 
 To get the most out of limited presentation time, finite deliverable capacity, most immediately and perhaps most significant to minimize research and development time while maximizing relative output value.   
 If an infinite amount of time was spent incrementally refining work for incrementally smaller returns (_but returns none-the-less_), or a lack of respect for a singular deliverable presented in a timely manner to allow the greatest value from the analysis to be harvested when the analyst spends too much time in the beginning letting scope go out and window and finding themselves spending the 3rd quarter of their time procrastinating only to compound on those impossible last weeks with all-nighter after all-nighter until.... _too much anxiety even recounting those stories_    
@@ -386,7 +404,7 @@ If an infinite amount of time was spent incrementally refining work for incremen
         + where a, b, c, d, are scalars with some easy assumptions such as b > a (implying that deaths are more "damage" than injuries when averaged out on a unit basis)    
         + _Location_ - could be weighted by burough using average sqft cost when buying a home   
 
-### New Variables   
+### 8.2 New Variables   
 
 It is easy and tempting to stay inside a nice box of data - particularly after working with it for a while and feeling overly comfortable.    
 Conversly, half-hazardly throwing in as many variables as possible can lead to a consequence of overfitting amount other issues that will destort the results. A selection bias on behalf of the analyst happens when data that supports their existing trends is kept and unsuporting points are left out. In extreme cases, a complete loss of statistical significance can occure when so many options have been filtered through that a target like a p-value of 0.05 is inevitable in some random relationship.    
@@ -464,6 +482,8 @@ The rnoaa package returns ncdc data objects from weather data requests to the AP
 The code below enhances this flow by placing the **ggplot** object in a **plotly** wrapper for converting **ggplot** objects into **plotly** htmlwidget graphs.    
 This method was used early on for checking and exploring the data when it first came in. However, while the primary goal is to uncover insights that will _assist local government in reducing traffic accidents in Brooklyn_, producing an interactive dashboard with widgets that enable visual exploration of the prepared data without code could be an indispensible tool for the intended stakeholders.   
 With a dashboard in mind and given there are multiple weather conditions of interest, the most robust container that can be used for interactive graphics on the web becomes a secondary objective after uncovering insights ( _insights that will guide how the data is prepared and what options are pruned down to on the dashboard_).
+
+The [Climate Data Online](https://www.ncdc.noaa.gov/cdo-web/webservices/v2) webservice has a [tool](https://www.ncdc.noaa.gov/cdo-web/search) to search for a dataset based on parameters such as observed  variables types, specific search terms, data range and location. [This toel](https://www.ncdc.noaa.gov/cdo-web/search) can be set to return a dataset to your email for ease of use and portability of data when off-line, for sharing or reproducibility. 
 ```{r ncdc-plot}
 # plot ncdc data object (now extracting data to create single weather object)
 snoPLOT <- ncdc_plot(nySNOW)
@@ -471,9 +491,56 @@ snp <- ggplotly(snoPLOT)
 subplot(snoPLOT,snp)
 ```
 
+#### Merge Weather Data with Set
 
+The [National Centers for Environmental Information](https://www.ncei.noaa.gov) formally known as Nation Climate Data Center - **NCDC** maintains a[nother amazing acronym] the well organized and documented web service [Climate Data Online](https://www.ncdc.noaa.gov/cdo-web/webservices/v2) - **CDO**. Additionally there is a more human oriented service [National Oceanic and Atmospheric Administration](http://www.noaa.gov) on behalf of the U.S. Department of Commerse.
 
-### Visually Explore Dataset    
+Here I have identified the recorded and measured weather conditions which I believe will be informative for our purpose as well as the future purpose of stake holders using the dashboard when I am not longer available to them.
+```{r noaa-prcp}
+PRCP.1 <- ncdc(stationid = 'GHCND:USW00014732',
+                datasetid = 'GHCND',
+                datatypeid = 'PRCP',
+                startdate = '2012-07-01',
+                enddate = '2013-07-01',
+                token = 'RcvzdyWTwTiJriYNXFwUNWDrKUHsWkhc', limit = 370)
+
+PRCP.2 <- ncdc(stationid = 'GHCND:USW00014732',
+                datasetid = 'GHCND',
+                datatypeid = 'PRCP',
+                startdate = '2013-07-01',
+                enddate = '2014-07-01',
+                token = 'RcvzdyWTwTiJriYNXFwUNWDrKUHsWkhc', limit = 370)
+
+PRCP.3 <- ncdc(stationid = 'GHCND:USW00014732',
+                datasetid = 'GHCND',
+                datatypeid = 'PRCP',
+                startdate = '2014-07-01',
+                enddate = '2015-07-01',
+                token = 'RcvzdyWTwTiJriYNXFwUNWDrKUHsWkhc', limit = 370)
+
+PRCP.4 <- ncdc(stationid = 'GHCND:USW00014732',
+                datasetid = 'GHCND',
+                datatypeid = 'PRCP',
+                startdate = '2015-07-01',
+                enddate = '2016-07-01',
+                token = 'RcvzdyWTwTiJriYNXFwUNWDrKUHsWkhc', limit = 370)
+
+PRCP.5 <- ncdc(stationid = 'GHCND:USW00014732',
+                datasetid = 'GHCND',
+                datatypeid = 'PRCP',
+                startdate = '2016-07-01',
+                enddate = '2017-03-05',
+                token = 'RcvzdyWTwTiJriYNXFwUNWDrKUHsWkhc', limit = 370)
+
+nyPRCP <- ncdc_combine(PRCP.1, PRCP.2, PRCP.3, PRCP.4, PRCP.5)
+
+LnyWeather <- left_join(nyPRCP$data, nyWeather, by = "date")
+RnyWeather <- right_join(nyPRCP$data, nyWeather, by = "date")
+```
+
+## 9 Viewing{.tabset}        
+
+### 9.1 Visually Explore Dataset    
 
 #### Vehicle Split Bar Chart    
 
@@ -515,8 +582,8 @@ heat <- dt %>% group_by()
 
 
 --- ### --- ### --- ### ---
-## WIP ##
-
+## WIP ##{.tabset}    
+**WORK IN PROGRESS AND ABONDON ATTEMPTS**
 ### Map of Boroughs with ggplot PLotly    
 
 TODO: Show method that downloads map data from NY Open Data    [Here](http://stackoverflow.com/questions/32252505/how-to-map-new-york-city-using-map-function-in-r)    
@@ -581,10 +648,10 @@ plotly_build(ny)
 ```
 
 
-## Insight Visuals  
+## 10 Insight Visuals{.tabset}      
 
 
-### Mapping Brooklyn  
+### 10.1 Mapping Brooklyn  
 
 
 Looking at the map of all events with location data, it is clear that there are some errors here. Either a (0,0) location in the Atlantic on the equator or, thanks to the color factoring by Borough, a Brooklyn colored dot sounded by Queens colored dots and far from it's zone is easy to spot.

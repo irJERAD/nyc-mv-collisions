@@ -1,0 +1,17 @@
+base
+tufte
+ggplot2
+magrittr
+dplyr
+viridis
+plotly
+maps
+rgeos
+sp
+rgdal
+ggthemes
+crosstalk
+leaflet
+d3scatter
+d3heatmap
+rnoaa
