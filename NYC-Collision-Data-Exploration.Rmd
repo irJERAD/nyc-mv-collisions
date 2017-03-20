@@ -4,7 +4,6 @@ author: "Jerad Acosta"
 date: "March 2017"
 output:
   tufte::tufte_html: default
-  tufte::tufte_handout: default
 ---
 
 # About    
@@ -106,12 +105,7 @@ datatable(summary(dt))
 
 ### 3.3 Dataset Variables   
 
-Our Dataset structure revealed the variables and their classes `sapply(names(dt), function(x) paste0(x, ' is class: ', class(dt[[x]])))` =
-
-```{r data-summary}
-datatable(summary(dt), colnames = c('Observed Variable' = 'Var2',
-                       "Quantitative Measures" = "Freq"))
-```
+Our Dataset structure revealed the variables and their classes `sapply(names(dt), function(x) paste0(x, ' is class: ', class(dt[[x]])))`
 
 The first thing to come to mind with such a factor heavy dataset is counting. Factors are not a hodgepodge collection of values, observed as they are pick up off the ground. Each Level of a factor - ideally - should have been intentionally designed. Ordered and distributed according to a purpose greater than the unit. Though not statically related as quantifiable assets, the levels in a factor are each related to one and other in addition to the group as a whole.
 
@@ -138,7 +132,8 @@ mp <- dt %>%
   plot_mapbox(lat = ~LATITUDE, lon = ~LONGITUDE,
               split = ~BOROUGH, mode = 'scattermapbox') %>%
   layout(mapbox = list(zoom = 9,
-      center = list(lat = ~(40.7), lon = ~(-74.0))))
+      center = list(lat = ~(40.7), lon = ~(-74.0))),
+      title = "All Events Across NYC")
 
   plotly_build(mp)
 ```
@@ -426,7 +421,7 @@ From Underground Weather - the web app used by WeatherData R package - these sta
 * ICS, Bronx (KNYNEWYO692)
 * Staten Island = West Brighton (KNYNEWYO277)
 
-```{r weather-underground, eval=FALSE}
+```{r weather-underground, eval=FALSE, }
 # Underground weather API not responding to weatherData requests
 WeatherBK <- getWeatherForDate(station_id = 'KNY',
                                start_date = "2013-07-01",
@@ -486,6 +481,8 @@ This method was used early on for checking and exploring the data when it first 
 With a dashboard in mind and given there are multiple weather conditions of interest, the most robust container that can be used for interactive graphics on the web becomes a secondary objective after uncovering insights ( _insights that will guide how the data is prepared and what options are pruned down to on the dashboard_).
 
 The [Climate Data Online](https://www.ncdc.noaa.gov/cdo-web/webservices/v2) webservice has a [tool](https://www.ncdc.noaa.gov/cdo-web/search) to search for a dataset based on parameters such as observed  variables types, specific search terms, data range and location. [This toel](https://www.ncdc.noaa.gov/cdo-web/search) can be set to return a dataset to your email for ease of use and portability of data when off-line, for sharing or reproducibility. 
+
+**Compare NCDC to Plotly output:**  
 ```{r ncdc-plot}
 # plot ncdc data object (now extracting data to create single weather object)
 snoPLOT <- ncdc_plot(nySNOW)
@@ -540,9 +537,71 @@ LnyWeather <- left_join(nyPRCP$data, nyWeather, by = "date")
 RnyWeather <- right_join(nyPRCP$data, nyWeather, by = "date")
 ```
 
-## 9 Viewing        
+## Viewing        
 
-### 9.1 Visually Explore Dataset    
+### Visually Explore Dataset    
+
+#### Rain and Snow in NYC
+
+To explore a logic intuition on the correlation between rain or snow fall and number of accident we need to prepare a augmented subset of a few dataset.
+
+1. Create Brooklyn subset
+2. Add propse date-time to combined weather data frame  
+3. Create getSeason function to defines and assigns seasons  
+4. Group by season to aggregate snow fall, rain fall and accident count into their respective columns  
+5. Join weather and Brooklyn accident data frames  
+6. Plot merged data frame  
+
+_note: may need to adjust or use multiple axis to help visual appeal of scale_  
+```{r}
+BKcnt <- brooklyn %>% group_by(date.time) %>% tally(sort = TRUE)
+
+RnyWeather$date.time <- as.POSIXct(RnyWeather$date, "%Y-%m-%dT%H:%M:%S")
+
+BKcnt <- within(BKcnt, {month = strftime(date.time, format = "%m")})
+Weather <- within(RnyWeather, {month = strftime(date.time, format = "%m")})
+
+getSeason <- function(DATES) {
+    WS <- as.Date("2012-12-15", format = "%Y-%m-%d") # Winter Solstice
+    SE <- as.Date("2012-3-15",  format = "%Y-%m-%d") # Spring Equinox
+    SS <- as.Date("2012-6-15",  format = "%Y-%m-%d") # Summer Solstice
+    FE <- as.Date("2012-9-15",  format = "%Y-%m-%d") # Fall Equinox
+
+    # Convert dates from any year to 2012 dates
+    d <- as.Date(strftime(DATES, format="2012-%m-%d"))
+
+    ifelse (d >= WS | d < SE, "Winter",
+      ifelse (d >= SE & d < SS, "Spring",
+        ifelse (d >= SS & d < FE, "Summer", "Fall")))
+}
+BKcnt$season <- getSeason(BKcnt$date.time)
+
+Weather$season <- paste0(getSeason(Weather$date.time), strftime(Weather$date.time, "%y"))
+BKcnt$season <- paste0(getSeason(BKcnt$date.time), strftime(BKcnt$date.time, "%y"))
+
+We <- Weather %>% group_by(season) %>% summarise(rain = sum(value.x), snow = sum(value.y))
+Bwe <- BKcnt %>% group_by(season) %>% summarise(n = sum(n))
+#We <- aggregate(value.x ~ season, Weather, sum)
+
+bkWeather <- right_join(Bwe, We, by = 'season')
+
+ay <- list(
+  tickfont = list(color = "red"),
+  overlaying = "y",
+  side = "right",
+  title = "Depth (cm)"
+)
+
+weatherPlot <- plot_ly(bkWeather, x = ~season, y = ~n, name = "Accidents", type = "bar") %>%
+  add_trace(y = ~snow, name = "Snow Fall", yaxis = "y2") %>%
+  add_trace(y = ~rain, name = "Rain Fall", yaxis = "y2") %>%
+  layout(title = "Rain Snow and Accidents by Season", yaxis2 = ay,
+         xaxis = list(title = "Season of The Year", tickangle = 40),
+         yaxis = list(title = "Number of Accidents"))
+
+weatherPlot
+```
+
 
 #### Vehicle Split Bar Chart    
 
@@ -617,16 +676,13 @@ nyc_map <- fortify(gSimplify(nyc_sdf, 0.05))
 
 
 ```{r nyc-map}
-gg <- ggplot()
-gg <- gg + geom_map(data = nyc_map, map = nyc_map,
+gm <- ggplot()
+gm <- gm + geom_map(data = nyc_map, map = nyc_map,
                     aes(x = long, y = lat, map_id = id),
                     color = "black", fill = "white", size = 0.25)
-gg <- gg + coord_equal() 
-gg <- gg + theme_map()
-gg
-
-## TODO currently kills R session
-# ggplotly(gg)
+gm <- gm + coord_equal() 
+gm <- gm + theme_map()
+gm
 ```
 
 

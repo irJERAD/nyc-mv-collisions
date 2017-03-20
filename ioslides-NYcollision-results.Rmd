@@ -1,16 +1,34 @@
 ---
 author: "Jerad Acosta"
-title: "Reducing Brooklyn Accidents with NYC Open Data"
+title: "Reducing Brooklyn Accidents using Open Data"
 date: "March 2017"
 output:
   ioslides_presentation:
     css: slides.css
-    logo: images/ConnectwMe.png
-    self_contained: no
-    incremental: true
+    logo: images/inConnect.png
+    self_contained: false
+    incremental: false
+    smaller: true
+    widescreen: true
 ---
 
-# Overview / Purpose?   
+# Prepared for review by LinkedIn Analytics | Created by Jerad Acosta
+
+## Presentation Keys
+
+Use:    
+
+* `->` next slide  
+* `<-` previous slide  
+* `'f'` to enable fullscreen mode   
+* `'w'` to toggle widescreen mode   
+* `'o'` to enable overview mode   
+
+For context and support please [see the companion notebook](http://jerad.xyz/projects/collision-data-exploration.html) to see the code and process.  
+
+Use the [Github repo](https://github.com/irJERAD/nyc-mv-collisions) for a copy of the source code.  
+
+[Click Here](https://github.com/irJERAD/nyc-mv-collisions/blob/master/ioslides-NYcollision-results.Rmd) to see a copy of the code used to generate this presentation.  
 
 ## Goal
 
@@ -18,15 +36,89 @@ output:
 
 The analysis for this deck and the accompanying [Data Exploration R Notebook](http://jerad.xyz/projects/flatly-float.html) and Dashboard was primarily generated from the NYC Open Data [Vehicle Collision Data Set](https://data.cityofnewyork.us/Public-Safety/NYPD-Motor-Vehicle-Collisions/h9gi-nx95).  
 
-### The important factors influencing this work include:
+**Influential factors on this work include:**
 
-- City Council Stake Holders
-    + Can leverage the greatest amount of influence through their careers in local law and policy   
-- Reduce Accidents in Brooklyn    
-- Understand The NYC Collosion Data   
+- City Council Stake Holders    
+    + Can leverage their greatest impact in local law and policy (how can law and policy be used to reduce accidents in Brooklyn)    
+- Identify factors correlated with accidents    
+    + Awareness can reduce incedent by assisting drivers in pursuing their own interest to keep themselves alive and whole    
+- Understand The NYC Collosion Data        
+    + In the act of working with data an analyst can grow an empathy toward its tendencies        
+        + Maturing their intuition on the matter and adding to a now enhanced skillset for use on this problem as well as future works        
 
-# Visual Exploration
 
-## HTML Widget Slide
+# The Geography of Events Across NYC | A Visual Exploration...
+
+Glance at where accidents have been recorded across the five boroughs of New York City.
+
+---
 
 <iframe src="html_widgets/NYC-All-Crashes.html"></iframe>
+hover for more info, zoom, (de)select Borough Categories 
+
+# Events Over Time
+
+<h3>Visualize number of accidents each hour of each weekday to:</h3>   
+<div style="color: orange">
+<font size="6">
+<ul>
+<li>Visually search for patterns   
+<ul>
+<li>Take advantage of priori knowledge (e.g. human nature toward a weekly schedule & routine)</li>
+<li>People live, work and plan around a 7-day weekly schedule that has universal social influencers</li>   
+<li>For example: a 9-5 workschedule or Weekends</li>   
+</ul></li>
+</ul>
+</font>
+</div>
+
+## Hours of the Week {.smaller}
+<div style="text-alight:center">
+Look for daily and weekly patterns in the data
+<iframe src="html_widgets/hourXday.html" style="height:450px; width:100%"></iframe>
+Significant increase in events on weekdays vs weekend with the greatest number of incident aligning with commute times.
+</div>
+
+## Exploring Weather
+
+Weather Data was collected from the NOAA API.  
+Data on snow and rain fall was merged with accident data to search for what seems like an intuitive correlation.  
+Oddly, no significant correlation was found; However, upon inspecting the data seasonally as was done for the weather, a pattern becomes clear. The pattern is across time and appears to be annual, consistently growing from 2012 to 2015 in all seasons and through to 2016 in Spring and Winter.  
+Thus, we can support the premis of exploring extreme options with regard to vehicle safety in Brooklyn - including legal and campaigning.  
+
+---
+
+<iframe src="html_widgets/seasonal.html" style="height:450px; width:100%"></iframe>
+
+
+## Continue The Journey | Further Your Exploration
+<div class="columns-2">
+Checkout the code to this deck, the exploratory work and tutorial used to create it, and an interactive dashboard to further explore the dataset  
+<br>
+<br>
+<br>
+Click my profile image to see more of my projects on my website: [Jerad.xyz](http://Jerad.xyz)  
+<br>
+<br>
+<br>
+<br>
+Connect with me on LinkedIn  
+<br>
+<br>
+<br>
+<br>
+<br>
+<a href="https://github.com/irJERAD/nyc-mv-collisions"><img src="images/github-b.png"></a>  
+<br>
+<a href="http://Jerad.xyz/projects/"><img src="images/jeradXYZ.png"></a>  
+<br>
+<a href="https://LinkedIn.com/in/JeradAcosta"><img src="images/ConnectwMe.png"></a>
+</div>
+
+---
+
+For context and support please [see the companion notebook](http://jerad.xyz/projects/collision-data-exploration.html) to see the code and process.  
+
+Use the [Github repo](https://github.com/irJERAD/nyc-mv-collisions) for a copy of the source code.  
+
+[Click Here](https://github.com/irJERAD/nyc-mv-collisions/blob/master/ioslides-NYcollision-results.Rmd) to see a copy of the code used to generate this presentation.  

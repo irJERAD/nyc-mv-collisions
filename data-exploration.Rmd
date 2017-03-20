@@ -5,11 +5,13 @@ output:
     theme: flatly
     df_print: paged
     toc: yes
+    toc_float: true
     toc_depth: 5
+    number_sections: true
   html_notebook: default
 ---
 
-# About    
+# About {.unnumbered}   
 
 This notebook explores the more recent data from NYC Open Data [Data Set](https://data.cityofnewyork.us/Public-Safety/NYPD-Motor-Vehicle-Collisions/h9gi-nx95).
 
@@ -17,15 +19,15 @@ This dataset can also be reached and interacted with through its [Google BigQuer
 
 Try a different version: [handout page](http://jerad.xyz/projects/NYC-Collision-Data-Exploration-in-R.html), [Tab Navigation](http://jerad.xyz/projects/flatly-float.html)  
 
-## 1 Exercise Overview        
-### 1.1 Purpose    
+#  Exercise Overview        
+## Purpose    
 _Reduce Car Accidents in Brooklyn_
 
 For this exercise, we'd like you to analyze data on New York motor vehicle collisions and answer the following question:    
 **What are your ideas for reducing accidents in Brooklyn?**   
 Imagine you are preparing this presentation for the city council who will use it to inform new legislation and/or projects.
 
-### 1.2 TODO
+## TODO
 
 Briefly:  
 
@@ -45,9 +47,9 @@ Briefly:
     + [x] summary  
     + [ ] identify dependent variables  
 
-## 2 Setup    
+# Setup    
 
-### 2.1 Load Libraries
+## Load Libraries
 
 Libraries that will be used during exploration
 ```{r libraries, warning=FALSE, message=FALSE}
@@ -69,7 +71,7 @@ library(DT)
 #library(ggmap)
 ```
 
-### 2.2 Create Environment
+## Create Environment
 
 Collect API tokens in Environment Variables (purposefully kept hidden here). Tokens and keys used include Google Maps API key (get one [here](https://developers.google.com/maps/documentation/javascript/get-api-key), Mapbox Access Token(get one [here](https://www.mapbox.com/developers/)) and an NCDC token ([here](https://www.ncdc.noaa.gov/cdo-web/token)) for NOAA weather data.  
 ```{r Sys-env, include=FALSE}
@@ -82,32 +84,31 @@ knitr::opts_chunk$set(fig.width = 8, fig.height = 6, fig.path = 'Figs/',
 ```
 
 
-### 2.3 Load Data
+## Load Data
 
 Load data from /data directory and into memory
 ```{r import-data, cache=TRUE}
 dt <- read.csv(file = "data/NYPD_Motor_Vehicle_Collisions.csv")
 ```
 
-## 3 Undertand Dataset    
+# Undertand Dataset    
 
-### 3.1 Dataset Structure
+## Dataset Structure
 
 Inspect structure of dataset with the `str()` command:
 ```{r data-structure}
 datatable(str(dt))
 ```
 
-### 3.2 Dataset Summary
+## Dataset Summary
 
 Inspect summary of dataset with `summary()` command:
 ```{r data-summary}
-datatable(summary(dt), colnames = c('Observed Variable' = 'Var2',
-                       "Quantitative Measures" = "Freq"))
+datatable(summary(dt))
 ```
 
 
-### 3.3 Dataset Variables
+## Dataset Variables
 
 Our Dataset structure revealed the variables and their classes `sapply(names(dt), function(x) paste0(x, ' is class: ', class(dt[[x]])))` =    
 ```{r vars, echo=FALSE, }
@@ -118,7 +119,7 @@ variables
 The first thing to come to mind with such a factor heavy dataset is counting. Factors are not a hodgepodge collection of values, observed as they are pick up off the ground. Each Level of a factor - ideally - should have been intentionally designed. Ordered and distributed according to a purpose greater than the unit. Though not statically related as quantifiable assets, the levels in a factor are each related to one and other in addition to the group as a whole.
 
 
-### 3.4 Clean Data
+## Clean Data
 
 There are a lot of empty cells. To make sure we use a universal value for blank or Not Available we will assign the value NA to all blank cells.
 While munging around with the data, add what could be a valuable variable created from two current variables. The `DATE` and `TIME` variables are set up as factors. This has interesting categorical value so they will stay in the data. Rather than replace the two rows, add a third one in a POSIX date form.   
@@ -131,15 +132,17 @@ dt[dt == ''] <- NA
 dt <- within(dt, {date.time = as.POSIXct(strptime(paste(DATE, TIME), "%m/%d/%Y %H:%M"))})
 ```
 
-### 3.5 Map Variables  
+## Map Variables  
 
-With Latitude and Longitude present and appearing to be fairly well documented, let's take a quick look at how these accidents look over an interactive world map (incase of mistakes outlying somewhere aside from New York). We will use the `BOROUGH` variable as a factor. This gives the geographic association of each borough and allows us early forsight into anything specific about our point of interest `BOURGH == "BROOKLYN"`
+With Latitude and Longitude present and appearing to be fairly well documented, let's take a quick look at how these accidents look over an interactive world map (incase of mistakes outlying somewhere aside from New York). We will use the `BOROUGH` variable as a factor. This gives the geographic association of each borough and allows us early forsight into anything specific about our point of interest `BOURGH == "BROOKLYN"`    
+
 ```{r map-vars, warning=FALSE}
 mp <- dt %>%
   plot_mapbox(lat = ~LATITUDE, lon = ~LONGITUDE,
               split = ~BOROUGH, mode = 'scattermapbox') %>%
   layout(mapbox = list(zoom = 9,
-      center = list(lat = ~(40.7), lon = ~(-74.0))))
+      center = list(lat = ~(40.7), lon = ~(-74.0))),
+      title = "All Events Across NYC")
 
   plotly_build(mp)
 ```
@@ -171,11 +174,11 @@ ggmap(ny.map, extent = "panel", maprange = FALSE) +
 ```
 
 
-### 3.6 Understanding Conclusion  
+## Understanding Conclusion  
 
 With a goal of _reducing accidents in Brooklyn_ our main goal is to reduce observations of accidents where `BOROUGH == "BROOKLYN"`.  
 
-#### Proposed Solutions:  
+### Proposed Solutions:  
 
 - Explore facets of variables  
     + Datetime  
@@ -214,16 +217,16 @@ Look for reductions in other burroughs over time and propose similar efforts.
 
 
 
-## 4 Exploration    
+# Exploration    
 
-### 4.1 Subset to Brooklyn
+## Subset to Brooklyn
 
 Create subset of Brooklyn observations:
 ```{r filter-brooklyn}
 brooklyn <- filter(dt, BOROUGH == "BROOKLYN")
 ```
 
-### 4.2 Look at CONTRIBUTING.FACTOR.*
+## Look at CONTRIBUTING.FACTOR.*
 
 ```{r fact-1}
 fact.1 <- brooklyn %>%
@@ -235,7 +238,7 @@ fact.1
 Only 3 factor levels appear over 10,000 times in the `brooklyn$CONTRIBUTING.FACTOR.VEHICLE.1` variable.  
 
 
-#### Distribution of CONTRIBUTING.FACTOR.VEHICLE.1    
+### Distribution of CONTRIBUTING.FACTOR.VEHICLE.1    
 
 Explore quantile distribution of `brooklyn$CONTRIBUTING.FACTOR.VEHICLE.1` variable then use cumulative distribution to calculate the probability / percentage of factor levels below 10,000 and 5,000:  
 ```{r fact-dist}
@@ -247,12 +250,12 @@ ecdf(fact.1$n)(5000)
 An expected majority of `ecdf(fact.1$n)(10000)` = `r ecdf(fact.1$n)(10000) * 100`% are below 10,000 occurances.  
 Of interest is still nearly 90% below 5,000 which also provides us double the defined contributing factors (since the largest observation is listed as "Unspecified")  
 
-## 5 Regression Analysis      
+# Regression Analysis      
 
 Searching for important variables.  
 Mix multiple logical combinations of regressor variables against predictor variables of interest.  
 
-### 5.1 Predict BOROUGH  
+## Predict BOROUGH  
 
 Attemp to create a linear model trained to predict the BOROUGH location of an observation:  
 ```{r}
@@ -268,12 +271,12 @@ formula1.2 = BOROUGH ~ CONTRIBUTING.FACTOR.VEHICLE.1 +
   CONTRIBUTING.FACTOR.VEHICLE.2 + VEHICLE.TYPE.CODE.1 + VEHICLE.TYPE.CODE.2
 ```
 
-## 6 Graphical Exploration of Set        
+# Graphical Exploration of Set        
 
 
-### 6.1 Split by Borough    
+## Split by Borough    
 
-#### Bar Chart    
+### Bar Chart    
 
 Start with a quick look at total events for each borough:   
 ```{r hour-bar}
@@ -305,24 +308,32 @@ Things to consider:
 - Number of drivers in Brooklyn (perhaps driving is more popular there than Manhattan)     
 - Average driver profile (professional Cab drivers in the city have different accident distributions than family drivers in Brooklyn)    
 
-## 7 Brooklyn a Visual Exploration        
+# Brooklyn a Visual Exploration        
 
-### 7.1 Time of Day   
+## Time   
 
-#### Bar Chart
-Create a Bar chart for Accidents across hours of the day.   
-Modification to consider:   
-group by:   
+**Visualization Assets**    
 
-- Borough   
-- Contributing Factor   
-Scale by:   
-- Number of fatalities    
-- Number of injuries    
+- Group by:   
+    + Borough   
+    + Contributing Factor   
+- Scale by:   
+    + Number of fatalities    
+    + Number of injuries    
+- User interactions prospects:   
+    + Group by _(crop data, factor color, freq gradient)_:   
+        + Borough   
+        + Contributing Factor   
+    + Scale by:   
+        + Number of fatalities    
+        + Number of injuries    
+        + "Damage Formula" = a\*count(death) + b\*count(injury)
 
-#### BK Heatmap    
+### Bar Chart   
 
-##### Day of the week across hour of the day   
+### BK Heatmap    
+
+#### Day of the week across hour of the day   
 
 With time being an essential part of this graphical exploration, start by identifying and removing observations that do not have the appropriate time data.   
 ```{r bk-hourday}
@@ -345,6 +356,11 @@ hotBK <- data.frame(BKx2, BKy)
 # create frequency table of hours and wdays from hotBK with count()
 BKfreq <- count(hotBK, BKx2, BKy)
 
+# Level Factor for desired presentation:
+# Select an order with days in sequence for best visual insight
+sun <- c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
+BKfreq$BKy <- factor(BKfreq$BKy, levels = sun)
+
 gg <- ggplot(BKfreq, aes(x = BKx2, y = BKy, fill = n))
 gg <- gg + geom_tile(color = "white", size = 0.1)
 
@@ -355,14 +371,13 @@ gg <- gg + labs(x = "Hour of the Day 00:00 to 23:00 ",
                 title = "Folding Time")
 
 ggplotly(gg)
-# try using the entire subset and building from there by grouping
-# this will give access to other values and allow interactive chart building
-#heat <- hotBK %>% group_by(x2,y) %>% tally(sort = TRUE)
-
 ```
 
+A clear pattern is immediately visible:   
+**Monday through Friday && 8am to 6pm contains universally more events.** _(if any dimension / factor were changed from [X >= Monday && X <= Friday && X >= 8 && X <= 18] == TRUE to FALSE, then X' [FALSE] will will always contain a lower event count than X [TRUE].)_   
+Iluminated by a priori assumptions about the influence of modern society - _in particular commute times imposed by weekly work hours_ - on the number of cars on the road. Combined with 
 
-### 7.2 Chotorpeth    
+### Chotorpeth    
 
 ```{r plotly-chloroMap}
 # map pojection / options
@@ -386,13 +401,13 @@ map_data("world", "canada") %>%
 ..plot_geo(x = ~long, y = ~lat) %>%   
 ..add_markers(size = I(1))    
 
-## 8 Predictive Variables       
+## Predictive Variables       
 
 It is easy to argue why these variables could not predict an accident, as in one that has not occured. The primary goal of this analysis is to reduce accidents in Brooklyn by providing the results to a city council member.   
 Predictive or not. There are definitely relationships across observed values and variable states. Finding a relationship betweem a group of or even single variable and the outcome we are seeking to change. In order to change something - particularly something that has not happened -, it must be understood. it would seem, true, deep and profound change can only come through intimate understanding.    
 
 
-### 8.1 Thinking on Variables
+### Thinking on Variables
 
 To get the most out of limited presentation time, finite deliverable capacity, most immediately and perhaps most significant to minimize research and development time while maximizing relative output value.   
 If an infinite amount of time was spent incrementally refining work for incrementally smaller returns (_but returns none-the-less_), or a lack of respect for a singular deliverable presented in a timely manner to allow the greatest value from the analysis to be harvested when the analyst spends too much time in the beginning letting scope go out and window and finding themselves spending the 3rd quarter of their time procrastinating only to compound on those impossible last weeks with all-nighter after all-nighter until.... _too much anxiety even recounting those stories_    
@@ -407,7 +422,7 @@ If an infinite amount of time was spent incrementally refining work for incremen
         + where a, b, c, d, are scalars with some easy assumptions such as b > a (implying that deaths are more "damage" than injuries when averaged out on a unit basis)    
         + _Location_ - could be weighted by burough using average sqft cost when buying a home   
 
-### 8.2 New Variables   
+### New Variables   
 
 It is easy and tempting to stay inside a nice box of data - particularly after working with it for a while and feeling overly comfortable.    
 Conversly, half-hazardly throwing in as many variables as possible can lead to a consequence of overfitting amount other issues that will destort the results. A selection bias on behalf of the analyst happens when data that supports their existing trends is kept and unsuporting points are left out. In extreme cases, a complete loss of statistical significance can occure when so many options have been filtered through that a target like a p-value of 0.05 is inevitable in some random relationship.    
@@ -541,9 +556,68 @@ LnyWeather <- left_join(nyPRCP$data, nyWeather, by = "date")
 RnyWeather <- right_join(nyPRCP$data, nyWeather, by = "date")
 ```
 
-## 9 Viewing        
+## Viewing        
 
-### 9.1 Visually Explore Dataset    
+### Visually Explore Dataset    
+
+#### Rain and Snow in NYC
+
+To explore a logic intuition on the correlation between rain or snow fall and number of accident we need to prepare a augmented subset of a few dataset.
+
+1. Create Brooklyn subset
+2. Add propse date-time to combined weather data frame  
+3. Create getSeason function to defines and assigns seasons  
+4. Group by season to aggregate snow fall, rain fall and accident count into their respective columns  
+5. Join weather and Brooklyn accident data frames  
+6. Plot merged data frame  
+
+_note: may need to adjust or use multiple axis to help visual appeal of scale_  
+```{r}
+BKcnt <- brooklyn %>% group_by(date.time) %>% tally(sort = TRUE)
+
+RnyWeather$date.time <- as.POSIXct(RnyWeather$date, "%Y-%m-%dT%H:%M:%S")
+
+BKcnt <- within(BKcnt, {month = strftime(date.time, format = "%m")})
+Weather <- within(RnyWeather, {month = strftime(date.time, format = "%m")})
+
+getSeason <- function(DATES) {
+    WS <- as.Date("2012-12-15", format = "%Y-%m-%d") # Winter Solstice
+    SE <- as.Date("2012-3-15",  format = "%Y-%m-%d") # Spring Equinox
+    SS <- as.Date("2012-6-15",  format = "%Y-%m-%d") # Summer Solstice
+    FE <- as.Date("2012-9-15",  format = "%Y-%m-%d") # Fall Equinox
+
+    # Convert dates from any year to 2012 dates
+    d <- as.Date(strftime(DATES, format="2012-%m-%d"))
+
+    ifelse (d >= WS | d < SE, "Winter",
+      ifelse (d >= SE & d < SS, "Spring",
+        ifelse (d >= SS & d < FE, "Summer", "Fall")))
+}
+BKcnt$season <- getSeason(BKcnt$date.time)
+
+Weather$season <- paste0(getSeason(Weather$date.time), strftime(Weather$date.time, "%y"))
+BKcnt$season <- paste0(getSeason(BKcnt$date.time), strftime(BKcnt$date.time, "%y"))
+
+We <- Weather %>% group_by(season) %>% summarise(rain = sum(value.x), snow = sum(value.y))
+Bwe <- BKcnt %>% group_by(season) %>% summarise(n = sum(n))
+#We <- aggregate(value.x ~ season, Weather, sum)
+
+bkWeather <- right_join(Bwe, We, by = 'season')
+
+ay <- list(
+  tickfont = list(color = "red"),
+  overlaying = "y",
+  side = "right",
+  title = "Depth (cm)"
+)
+
+plot_ly(bkWeather, x = ~season, y = ~n, name = "Accidents", type = "bar") %>%
+  add_trace(y = ~snow, name = "Snow Fall", yaxis = "y2") %>%
+  add_trace(y = ~rain, name = "Rain Fall", yaxis = "y2") %>%
+  layout(title = "Rain Snow and Accidents by Season", yaxis2 = ay,
+         xaxis = list(title = "Season of The Year", tickangle = 40),
+         yaxis = list(title = "Number of Accidents"))
+```
 
 #### Vehicle Split Bar Chart    
 
@@ -651,10 +725,10 @@ plotly_build(ny)
 ```
 
 
-## 10 Insight Visuals{.tabset}      
+## Insight Visuals{.tabset}      
 
 
-### 10.1 Mapping Brooklyn  
+### Mapping Brooklyn  
 
 
 Looking at the map of all events with location data, it is clear that there are some errors here. Either a (0,0) location in the Atlantic on the equator or, thanks to the color factoring by Borough, a Brooklyn colored dot sounded by Queens colored dots and far from it's zone is easy to spot.
