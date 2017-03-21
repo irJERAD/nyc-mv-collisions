@@ -1,0 +1,91 @@
+---
+title: "Brooklyn Vehicle Collision Data Dashboard"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+```
+
+```{r import-data, cache=TRUE}
+dt <- read.csv(file = "data/NYPD_Motor_Vehicle_Collisions.csv")
+```
+
+```{r clean-dt}
+dt[dt == ''] <- NA
+
+dt <- within(dt, {date.time =
+  as.POSIXct(strptime(paste(DATE, TIME), "%m/%d/%Y %H:%M"),
+             tz = "America/New_York")})
+```
+
+```{r make-BK}
+brooklyn <- filter(dt, BOROUGH == "BROOKLYN")
+```
+
+```{r sub-bk}
+# Do I need this?
+boroughCount <- dt %>% group_by(BOROUGH) %>% tally(sort = TRUE)
+
+
+## Create data frame for frequency table of events per hour of day + day of week
+# remove all observations with an NA for date.time
+BKt <- brooklyn %>% filter(!is.na(date.time))
+
+# get take hour from time and strip rest away 
+# use 24 hour clock - values: 0 - 23
+Hour <- strftime(BKt$date.time, "%H")
+
+# Rounding on Weekdays does not make sense.
+Day <- weekdays.POSIXt(BKt$date.time)
+
+hotBK <- data.frame(Hour, Day)
+
+# create frequency table of hours and wdays from hotBK with count()
+BKfreq <- count(hotBK, Hour, Day)
+# rename count variable
+
+# Level Factor for desired presentation:
+# Select an order with days in sequence for best visual insight
+mon <- c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+BKfreq$Day <- factor(BKfreq$Day, levels = mon)
+
+sat <- c("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+BKfreq$Day <- factor(BKfreq$Day, levels = sat)
+```
+
+
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Chart A
+
+```{r scatter3-weather}
+plot_ly(BKfreq, x = ~Hour, y = ~Day, z = ~n, hoverinfo = "text",
+        text = ~paste0('There where: ', n, ' Accidents', '<br>', 'Recorded From July of 2012 to March of 2017', '<br>', 'On ', Day, ' at ', Hour, ':00 hours'),
+        marker = list(color = ~n, colorscale = c('#FFE1A1','#683531')),
+        type = 'scatter3d', mode = 'markers') %>%
+  layout(scene = list(xaxis = list(title = "Hour<br>of Day"),
+                      yaxis = list(title = "Day of Week", type = "category"),
+                      zaxis = list(title = "Accidents", type = "log")))
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Chart B
+
+```{r}
+
+```
+
+### Chart C
+
+```{r}
+
+```
+

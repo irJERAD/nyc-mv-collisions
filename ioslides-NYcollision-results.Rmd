@@ -6,10 +6,10 @@ output:
   ioslides_presentation:
     css: slides.css
     logo: images/inConnect.png
-    self_contained: false
-    incremental: false
+    self_contained: yes
     smaller: true
-    widescreen: true
+    widescreen: yes
+#output: ioslides_presentation
 ---
 
 # Prepared for review by LinkedIn Analytics | Created by Jerad Acosta
@@ -20,7 +20,7 @@ Use:
 
 * `->` next slide  
 * `<-` previous slide  
-* `'f'` to enable fullscreen mode   
+* `'f'` to enable full-screen mode   
 * `'w'` to toggle widescreen mode   
 * `'o'` to enable overview mode   
 
@@ -41,59 +41,59 @@ The analysis for this deck and the accompanying [Data Exploration R Notebook](ht
 - City Council Stake Holders    
     + Can leverage their greatest impact in local law and policy (how can law and policy be used to reduce accidents in Brooklyn)    
 - Identify factors correlated with accidents    
-    + Awareness can reduce incedent by assisting drivers in pursuing their own interest to keep themselves alive and whole    
-- Understand The NYC Collosion Data        
+    + Awareness can reduce incident by assisting drivers in pursuing their own interest to keep themselves alive and whole    
+- Understand The NYC Collision Data        
     + In the act of working with data an analyst can grow an empathy toward its tendencies        
-        + Maturing their intuition on the matter and adding to a now enhanced skillset for use on this problem as well as future works        
+        + Maturing their intuition on the matter and adding to a now enhanced skill set for use on this problem as well as future works        
 
 
 # The Geography of Events Across NYC | A Visual Exploration...
 
-Glance at where accidents have been recorded across the five boroughs of New York City.
+<em style="color: white">...A glance at where accidents have been recorded across <b>the five boroughs of New York City...</b></em>
 
 ---
 
-<iframe src="html_widgets/NYC-All-Crashes.html"></iframe>
-hover for more info, zoom, (de)select Borough Categories 
+Hover for more info, Zoom, (de)select Borough Categories...
+<iframe src="http://jerad.xyz/Rmd/html_widgets/NYC-All-Crashes.html"></iframe>
 
 # Events Over Time
 
-<h3>Visualize number of accidents each hour of each weekday to:</h3>   
 <div style="color: orange">
 <font size="6">
+<b style="color: #F0F2F1">Chart Accident Count for each hour of each day of the week in order to:</b>
 <ul>
 <li>Visually search for patterns   
 <ul>
 <li>Take advantage of priori knowledge (e.g. human nature toward a weekly schedule & routine)</li>
 <li>People live, work and plan around a 7-day weekly schedule that has universal social influencers</li>   
-<li>For example: a 9-5 workschedule or Weekends</li>   
+<li>For example: a 9-5 work-schedule or Weekends</li>   
 </ul></li>
 </ul>
 </font>
 </div>
 
-## Hours of the Week {.smaller}
-<div style="text-alight:center">
-Look for daily and weekly patterns in the data
-<iframe src="html_widgets/hourXday.html" style="height:450px; width:100%"></iframe>
-Significant increase in events on weekdays vs weekend with the greatest number of incident aligning with commute times.
-</div>
+## Hours of the Week
+
+Daily patterns across the week and weekly patterns within each day
+<iframe src="http://jerad.xyz/Rmd/html_widgets/hourXday.html" style="height:450px; width:100%"></iframe>
+
+---
+
+Zoom, Rotate, Hover, Pan, ...
+<iframe src="http://jerad.xyz/Rmd/html_widgets/3dhourXday.html" style="height:450px; width:100%"></iframe>
 
 ## Exploring Weather
 
 Weather Data was collected from the NOAA API.  
 Data on snow and rain fall was merged with accident data to search for what seems like an intuitive correlation.  
 Oddly, no significant correlation was found; However, upon inspecting the data seasonally as was done for the weather, a pattern becomes clear. The pattern is across time and appears to be annual, consistently growing from 2012 to 2015 in all seasons and through to 2016 in Spring and Winter.  
-Thus, we can support the premis of exploring extreme options with regard to vehicle safety in Brooklyn - including legal and campaigning.  
-
----
-
-<iframe src="html_widgets/seasonal.html" style="height:450px; width:100%"></iframe>
+Thus, we can support the premise of exploring extreme options with regard to vehicle safety in Brooklyn - including legal and campaigning.   
 
 
-## Continue The Journey | Further Your Exploration
+## Continue The Journey | Further Your Exploration   
+
 <div class="columns-2">
-Checkout the code to this deck, the exploratory work and tutorial used to create it, and an interactive dashboard to further explore the dataset  
+Checkout the code to this deck, the exploratory work and tutorial used to create it, and an interactive dashboard to further explore the data set  
 <br>
 <br>
 <br>

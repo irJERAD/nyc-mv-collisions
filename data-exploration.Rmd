@@ -2,12 +2,12 @@
 title: "NYC Open Data Exploration"
 output:
   html_document:
-    theme: flatly
     df_print: paged
+    number_sections: yes
+    theme: flatly
     toc: yes
-    toc_float: true
     toc_depth: 5
-    number_sections: true
+    toc_float: yes
   html_notebook: default
 ---
 
@@ -19,6 +19,23 @@ This dataset can also be reached and interacted with through its [Google BigQuer
 
 Try a different version: [handout page](http://jerad.xyz/projects/NYC-Collision-Data-Exploration-in-R.html), [Tab Navigation](http://jerad.xyz/projects/flatly-float.html)  
 
+## About The Visualizations {.unnumbered}   
+
+The majority of graphics in this notebook have been created as HTML Widgets through packages such as [leaflet](https://cran.r-project.org/web/packages/leaflet/index.html) and [Plotly](https://cran.r-project.org/web/packages/plotly/index.html) which provide access to the Leaflet and Plotly JavaScript libraries through powerful APIs.  
+[Check Out Plotly's incredible R Library, API docs, and examples here](https://plot.ly/r/)   
+
+If you are viewing this in a browser, enhance your experience with the data visualization through the carefully designed interactions and thoughtout annotations.  
+
+Nearly each graph or chart has a few of the following:  
+
+- Zoom, Pan, Scale, Resize  
+- Hover for more info:
+    + Values, Hide / Reveal Variable or Category for graphic  
+- Rotate
+    + 3D visuals have complex spacial interactions for an immersive experience  
+- <click> + <drag> = (select) to crop-zoom   
+    + Crop to specific view of interest to zoom in  
+
 #  Exercise Overview        
 ## Purpose    
 _Reduce Car Accidents in Brooklyn_
@@ -26,26 +43,6 @@ _Reduce Car Accidents in Brooklyn_
 For this exercise, we'd like you to analyze data on New York motor vehicle collisions and answer the following question:    
 **What are your ideas for reducing accidents in Brooklyn?**   
 Imagine you are preparing this presentation for the city council who will use it to inform new legislation and/or projects.
-
-## TODO
-
-Briefly:  
-
-1. Inspect dataset  
-2. Identify dependent / outcome variables  
-3. iterate over:  
-    a. hypothesize predictor variables  
-    b. test  
-    c. document & consider results  
-  
-      
-- Setup   
-    + [ ] Libraries (_continual_)  
-    + [x] data  
-- Understand
-    + [x] structure  
-    + [x] summary  
-    + [ ] identify dependent variables  
 
 # Setup    
 
@@ -102,7 +99,7 @@ datatable(str(dt))
 
 ## Dataset Summary
 
-Inspect summary of dataset with `summary()` command:
+Inspect summary of dataset with `summary()` command:    
 ```{r data-summary}
 datatable(summary(dt))
 ```
@@ -119,7 +116,7 @@ variables
 The first thing to come to mind with such a factor heavy dataset is counting. Factors are not a hodgepodge collection of values, observed as they are pick up off the ground. Each Level of a factor - ideally - should have been intentionally designed. Ordered and distributed according to a purpose greater than the unit. Though not statically related as quantifiable assets, the levels in a factor are each related to one and other in addition to the group as a whole.
 
 
-## Clean Data
+## Clean Data  
 
 There are a lot of empty cells. To make sure we use a universal value for blank or Not Available we will assign the value NA to all blank cells.
 While munging around with the data, add what could be a valuable variable created from two current variables. The `DATE` and `TIME` variables are set up as factors. This has interesting categorical value so they will stay in the data. Rather than replace the two rows, add a third one in a POSIX date form.   
@@ -129,10 +126,12 @@ dt[dt == ''] <- NA
 #dt$date.time <- as.Date(dt$DATE, format("%m/%d/%Y"))
 
 # use hours & min in date.time var for calculations
-dt <- within(dt, {date.time = as.POSIXct(strptime(paste(DATE, TIME), "%m/%d/%Y %H:%M"))})
+dt <- within(dt, {date.time =
+  as.POSIXct(strptime(paste(DATE, TIME), "%m/%d/%Y %H:%M"),
+             tz = "America/New_York")})
 ```
 
-## Map Variables  
+## Map Variables   
 
 With Latitude and Longitude present and appearing to be fairly well documented, let's take a quick look at how these accidents look over an interactive world map (incase of mistakes outlying somewhere aside from New York). We will use the `BOROUGH` variable as a factor. This gives the geographic association of each borough and allows us early forsight into anything specific about our point of interest `BOURGH == "BROOKLYN"`    
 
@@ -152,9 +151,9 @@ These would be candidates for quick removal to save time, or cleaning if coordin
 
 ```{r location-count}
 w <- dt[,5:6]
-locCNT <- w %>% group_by(LATITUDE,LONGITUDE) %>% tally(sort=TRUE)
+locCNT <- w %>% group_by(LATITUDE,LONGITUDE) %>% tally(sort = TRUE)
 # frequency table for events by locations
-ww <- inner_join(w, locCNT, by=c("LATITUDE", "LONGITUDE"))
+ww <- inner_join(w, locCNT, by = c("LATITUDE", "LONGITUDE"))
 ```
 
 
@@ -166,7 +165,9 @@ ny.map <- get_map(location = ny, zoom = 10, color = "bw")
 # map with gradient of accident event count
 ggmap(ny.map, extent = "panel", maprange = FALSE) +
   geom_density2d(data = dt, aes(x = LONGITUDE, y = LATITUDE)) +
-  stat_density2d(data = ww, aes(x = LONGITUDE, y = LATITUDE, alpha = n, size = 0.01, bins = 16, geom = 'polygon')) +
+  stat_density2d(data = ww,
+                 aes(x = LONGITUDE, y = LATITUDE,
+                     alpha = n, size = 0.01, bins = 16, geom = 'polygon')) +
   scale_fill_gradient(low = "green", high = "red") +
   scale_alpha(range(c(0.00, 0.25), guide = FALSE)) +
   theme(legend.position = "none", axis.title = element_blank(), text = element_text(size = 12))
@@ -337,35 +338,36 @@ Things to consider:
 
 With time being an essential part of this graphical exploration, start by identifying and removing observations that do not have the appropriate time data.   
 ```{r bk-hourday}
-## Create a data frame then table of hour, day of week, and event count ##
-
+## Create data frame for frequency table of events per hour of day + day of week
 # remove all observations with an NA for date.time
 BKt <- brooklyn %>% filter(!is.na(date.time))
 
-# get time, rounded to nearest hour, strip rest away for values: 0 - 23
-BKx <- strftime(round(BKt$date.time, 'hours'), "%H")
-# perhaps rounding the hour removes the which "hour" are we in aspect
-# and only gives us, 'what is the closest hour'
-BKx2 <- strftime(BKt$date.time, "%H")
+# get take hour from time and strip rest away 
+# use 24 hour clock - values: 0 - 23
+Hour <- strftime(BKt$date.time, "%H")
 
 # Rounding on Weekdays does not make sense.
-BKy <- weekdays.POSIXt(BKt$date.time)
+Day <- weekdays.POSIXt(BKt$date.time)
 
-hotBK <- data.frame(BKx2, BKy)
+hotBK <- data.frame(Hour, Day)
 
 # create frequency table of hours and wdays from hotBK with count()
-BKfreq <- count(hotBK, BKx2, BKy)
+BKfreq <- count(hotBK, Hour, Day)
+# rename count variable
 
 # Level Factor for desired presentation:
 # Select an order with days in sequence for best visual insight
-sun <- c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
-BKfreq$BKy <- factor(BKfreq$BKy, levels = sun)
+mon <- c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+BKfreq$Day <- factor(BKfreq$Day, levels = mon)
 
-gg <- ggplot(BKfreq, aes(x = BKx2, y = BKy, fill = n))
+sat <- c("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+BKfreq$Day <- factor(BKfreq$Day, levels = sat)
+
+gg <- ggplot(BKfreq, aes(x = Hour, y = Day, fill = n))
 gg <- gg + geom_tile(color = "white", size = 0.1)
 
 ## UI ## TODO option = "A", "B", "C", "D" to change through 4 color palettes
-gg <- gg + scale_fill_viridis(name = "# of Accidents", option = "C")
+gg <- gg + scale_fill_viridis(name = "Events", option = "C")
 gg <- gg + labs(x = "Hour of the Day 00:00 to 23:00 ",
                 y = "Day of the Week",
                 title = "Folding Time")
@@ -375,7 +377,20 @@ ggplotly(gg)
 
 A clear pattern is immediately visible:   
 **Monday through Friday && 8am to 6pm contains universally more events.** _(if any dimension / factor were changed from [X >= Monday && X <= Friday && X >= 8 && X <= 18] == TRUE to FALSE, then X' [FALSE] will will always contain a lower event count than X [TRUE].)_   
-Iluminated by a priori assumptions about the influence of modern society - _in particular commute times imposed by weekly work hours_ - on the number of cars on the road. Combined with 
+Iluminated by a priori assumptions about the influence of modern society - _in particular commute times imposed by weekly work hours_ - on the number of cars on the road. Combined with the understandably common sense, _though not necessarily logically sound_, assumption that more cars on the road implies more accidents at that moment.
+
+### Dimensional Visual Exploration    
+
+
+```{r scatter3-weather}
+plot_ly(BKfreq, x = ~Hour, y = ~Day, z = ~n, hoverinfo = "text",
+        text = ~paste0('There where: ', n, ' Accidents', '<br>', 'Recorded From July of 2012 to March of 2017', '<br>', 'On ', Day, ' at ', Hour, ':00 hours'),
+        marker = list(color = ~n, colorscale = c('#FFE1A1','#683531')),
+        type = 'scatter3d', mode = 'markers') %>%
+  layout(scene = list(xaxis = list(title = "Hour<br>of Day"),
+                      yaxis = list(title = "Day of Week", type = "category"),
+                      zaxis = list(title = "Accidents", type = "log")))
+```
 
 ### Chotorpeth    
 
@@ -560,7 +575,7 @@ RnyWeather <- right_join(nyPRCP$data, nyWeather, by = "date")
 
 ### Visually Explore Dataset    
 
-#### Rain and Snow in NYC
+#### Rain and Snow in Brooklyn
 
 To explore a logic intuition on the correlation between rain or snow fall and number of accident we need to prepare a augmented subset of a few dataset.
 
@@ -572,10 +587,10 @@ To explore a logic intuition on the correlation between rain or snow fall and nu
 6. Plot merged data frame  
 
 _note: may need to adjust or use multiple axis to help visual appeal of scale_  
-```{r}
+```{r weather-accidents}
 BKcnt <- brooklyn %>% group_by(date.time) %>% tally(sort = TRUE)
 
-RnyWeather$date.time <- as.POSIXct(RnyWeather$date, "%Y-%m-%dT%H:%M:%S")
+RnyWeather$date.time <- as.POSIXct(RnyWeather$date, "%Y-%m-%dT%H:%M:%S", tz = "America/New_York")
 
 BKcnt <- within(BKcnt, {month = strftime(date.time, format = "%m")})
 Weather <- within(RnyWeather, {month = strftime(date.time, format = "%m")})
@@ -586,12 +601,12 @@ getSeason <- function(DATES) {
     SS <- as.Date("2012-6-15",  format = "%Y-%m-%d") # Summer Solstice
     FE <- as.Date("2012-9-15",  format = "%Y-%m-%d") # Fall Equinox
 
-    # Convert dates from any year to 2012 dates
-    d <- as.Date(strftime(DATES, format="2012-%m-%d"))
+    # Convert dates from any year to 2012 dates to standardize seasons
+    d <- as.Date(strftime(DATES, format = "2012-%m-%d"))
 
-    ifelse (d >= WS | d < SE, "Winter",
-      ifelse (d >= SE & d < SS, "Spring",
-        ifelse (d >= SS & d < FE, "Summer", "Fall")))
+    ifelse(d >= WS | d < SE, "Winter",
+      ifelse(d >= SE & d < SS, "Spring",
+        ifelse(d >= SS & d < FE, "Summer", "Fall")))
 }
 BKcnt$season <- getSeason(BKcnt$date.time)
 
@@ -603,12 +618,23 @@ Bwe <- BKcnt %>% group_by(season) %>% summarise(n = sum(n))
 #We <- aggregate(value.x ~ season, Weather, sum)
 
 bkWeather <- right_join(Bwe, We, by = 'season')
+```
 
+The newly created `bkWeather` dataset contains cleanly cropped tally of events - _accidents_ - in each of the `length(unique(bkWeather$season))`= `r length(unique(bkWeather$season))` uniquely defined seasons from July 2012 to March 2017.
+
+Grouping the count table by season maintains the preexisting ability to view event count - _number of accidents_ - across time while also adding a new quality to time, _season of year_, that can be analyzed in search of relationships that exist within these cyclical attributes of a larger dimension such as time. This is great for exploring patterns in variables correlated with seasonal aspects - _such as a potential link between seasonal weather and vehicle collisions_.    
+
+##### Seasonal Weather Graph    
+
+- Overlay the three dimensions: rainfall (mm), snowfall (mm), number of accidents in Brooklyn   
+- Group by season: Winter, Spring, Summer, Fall
+- Explore observations across seasons from Summer 2012 to Winter 2017   
+```{r season-plot}
 ay <- list(
   tickfont = list(color = "red"),
   overlaying = "y",
   side = "right",
-  title = "Depth (cm)"
+  title = "Depth (mm)"
 )
 
 plot_ly(bkWeather, x = ~season, y = ~n, name = "Accidents", type = "bar") %>%
@@ -618,6 +644,34 @@ plot_ly(bkWeather, x = ~season, y = ~n, name = "Accidents", type = "bar") %>%
          xaxis = list(title = "Season of The Year", tickangle = 40),
          yaxis = list(title = "Number of Accidents"))
 ```
+The xaxis = `season` - _Season of The Year_ - is grouped by season prior to projection. The adjacent bars from the same season of different years provides a perspective to compare events influenced by seasonal activities - **_such as weather_** - while still maintaining an overall linear time progression to survey for broader trends.   
+_note: Grouping by season before projection provides access to very large scale trends across time, but enables ample opportunity for missing smaller temperal patterns such as annually or monthly. This graphic should only be relied upon for comparing defined seasons within themseleves._   
+
+**ReLevel factor variable: `season` - _"Season of The Year"_**    
+
+Relevel the `season` variable into a temporally ordered factor. This will provide a linear perspective of the data and trends from July, Summer of 2012 to early March, Winter 2017.    
+```{r}
+# Relevel variables into temporal order
+bkWeather$season <- factor(bkWeather$season, levels = c("Summer12", "Fall12", "Winter12",
+                                          "Spring13", "Summer13", "Fall13", "Winter13",
+                                          "Spring14", "Summer14", "Fall14", "Winter14",
+                                          "Spring15", "Summer15", "Fall15", "Winter15",
+                                          "Spring16", "Summer16", "Fall16", "Winter16",
+                                          "Winter17"))
+```
+
+**Chart Number of Accidents, Snowfall and Rainfall in Brooklyn from July 2012 to March 2017.**    
+```{r}
+# replicate seasonal comparison chart with absolute linear time on x-axis
+# use releveled factor variables of seasons placed in temporal order
+plot_ly(bkWeather, x = ~season, y = ~n, name = "Accidents", type = "bar") %>%
+  add_trace(y = ~snow, name = "Snow Fall", yaxis = "y2") %>%
+  add_trace(y = ~rain, name = "Rain Fall", yaxis = "y2") %>%
+  layout(title = "Rain Snow and Accidents by Season", yaxis2 = ay,
+         xaxis = list(title = "Season of The Year", tickangle = 40),
+         yaxis = list(title = "Number of Accidents"))
+```
+
 
 #### Vehicle Split Bar Chart    
 
@@ -725,7 +779,7 @@ plotly_build(ny)
 ```
 
 
-## Insight Visuals{.tabset}      
+## Insight Visuals      
 
 
 ### Mapping Brooklyn  
